@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.4
+
+- Auto-configure a shared Ollama Lite endpoint from add-on options.
+- Seed the configured Ollama model into Odysseus so the model picker has a
+  server-side model entry immediately.
+- Keep local Ollama URLs on port 11434 native instead of forcing `/v1`.
+- Move the Home Assistant Ingress bootstrap to the start of `<head>` so API URL
+  rewriting is active before Odysseus scripts run.
+- Document model picker troubleshooting inside Home Assistant Ingress.
+
 ## 0.3.3
 
 - Make Odysseus LLM timeouts configurable from add-on options.

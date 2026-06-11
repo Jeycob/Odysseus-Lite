@@ -45,3 +45,36 @@ patch_file(
         ),
     ],
 )
+
+patch_file(
+    "static/js/admin.js",
+    [
+        (
+            "    // Ensure /v1 suffix for bare host:port URLs (not cloud providers)\n"
+            "    if (!u.includes('api.') && !u.includes('openrouter') && !u.includes('opencode.ai') && !u.includes('ollama.com') && !u.endsWith('/v1')) {\n"
+            "      try {\n"
+            "        const parsed = new URL(u);\n"
+            "        if (!parsed.pathname || parsed.pathname === '/') {\n"
+            "          u += '/v1';\n"
+            "        }\n"
+            "      } catch(e) {}\n"
+            "    }",
+            "    // Ensure /v1 suffix for bare OpenAI-compatible host:port URLs.\n"
+            "    // Local Ollama on 11434 is better handled through native /api/chat,\n"
+            "    // so keep http://host:11434 as-is instead of forcing /v1.\n"
+            "    if (!u.includes('api.') && !u.includes('openrouter') && !u.includes('opencode.ai') && !u.includes('ollama.com') && !u.endsWith('/v1')) {\n"
+            "      try {\n"
+            "        const parsed = new URL(u);\n"
+            "        const isOllamaPort = parsed.port === '11434';\n"
+            "        if (!isOllamaPort && (!parsed.pathname || parsed.pathname === '/')) {\n"
+            "          u += '/v1';\n"
+            "        }\n"
+            "      } catch(e) {}\n"
+            "    }",
+        ),
+        (
+            "    return 'http://127.0.0.1:11434/v1';",
+            "    return 'http://' + window.location.hostname + ':11434';",
+        ),
+    ],
+)

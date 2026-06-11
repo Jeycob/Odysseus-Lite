@@ -36,6 +36,8 @@ emit("ALLOWED_ORIGINS", options.get("allowed_origins", ""))
 emit("LLM_HOST", options.get("llm_host", ""))
 emit("LLM_HOSTS", options.get("llm_hosts", ""))
 emit("OLLAMA_BASE_URL", options.get("ollama_base_url", ""))
+emit("ODYSSEUS_AUTO_CONFIGURE_OLLAMA", "true" if options.get("auto_configure_ollama", True) else "false")
+emit("ODYSSEUS_OLLAMA_MODEL", options.get("ollama_model", "qwen2.5-coder:7b"))
 emit("OPENAI_API_KEY", options.get("openai_api_key", ""))
 emit("SEARXNG_INSTANCE", options.get("searxng_instance", ""))
 emit("CHROMADB_HOST", options.get("chromadb_host", ""))
@@ -210,6 +212,86 @@ else:
     else:
         print(f"[Odysseus Lite] Temporary password: {password}")
         print("[Odysseus Lite] Change it after first login, or set admin_password in the add-on Configuration tab.")
+PY
+
+python3 - <<'PY'
+import json
+import os
+import uuid
+
+AUTO_CONFIGURE = os.environ.get("ODYSSEUS_AUTO_CONFIGURE_OLLAMA", "true").lower() == "true"
+BASE_URL = (os.environ.get("OLLAMA_BASE_URL") or "").strip().rstrip("/")
+MODEL = (os.environ.get("ODYSSEUS_OLLAMA_MODEL") or "qwen2.5-coder:7b").strip()
+
+if AUTO_CONFIGURE and BASE_URL and MODEL:
+    try:
+        from core.database import ModelEndpoint, SessionLocal
+        db = SessionLocal()
+        try:
+            existing = (
+                db.query(ModelEndpoint)
+                .filter(ModelEndpoint.base_url == BASE_URL)
+                .first()
+            )
+            models_json = json.dumps([MODEL])
+            if existing:
+                changed = False
+                if not existing.name:
+                    existing.name = "Ollama Lite"
+                    changed = True
+                if not existing.is_enabled:
+                    existing.is_enabled = True
+                    changed = True
+                if getattr(existing, "endpoint_kind", None) in (None, "", "auto", "api", "proxy"):
+                    existing.endpoint_kind = "local"
+                    changed = True
+                if not getattr(existing, "model_refresh_mode", None):
+                    existing.model_refresh_mode = "auto"
+                    changed = True
+                cached = []
+                try:
+                    cached = json.loads(existing.cached_models or "[]")
+                except Exception:
+                    cached = []
+                if MODEL not in cached:
+                    cached.append(MODEL)
+                    existing.cached_models = json.dumps(cached)
+                    changed = True
+                pinned = []
+                try:
+                    pinned = json.loads(existing.pinned_models or "[]")
+                except Exception:
+                    pinned = []
+                if MODEL not in pinned:
+                    pinned.append(MODEL)
+                    existing.pinned_models = json.dumps(pinned)
+                    changed = True
+                if changed:
+                    db.commit()
+                    print(f"[Odysseus Lite] Updated Ollama endpoint: {BASE_URL} ({MODEL})")
+                else:
+                    print(f"[Odysseus Lite] Ollama endpoint already configured: {BASE_URL} ({MODEL})")
+            else:
+                ep = ModelEndpoint(
+                    id=str(uuid.uuid4())[:8],
+                    name="Ollama Lite",
+                    base_url=BASE_URL,
+                    api_key=None,
+                    is_enabled=True,
+                    model_type="llm",
+                    endpoint_kind="local",
+                    model_refresh_mode="auto",
+                    cached_models=models_json,
+                    pinned_models=models_json,
+                    owner=None,
+                )
+                db.add(ep)
+                db.commit()
+                print(f"[Odysseus Lite] Added Ollama endpoint: {BASE_URL} ({MODEL})")
+        finally:
+            db.close()
+    except Exception as exc:
+        print(f"[Odysseus Lite] Could not auto-configure Ollama endpoint: {exc}")
 PY
 
 python -m uvicorn app:app --host 0.0.0.0 --port 7000 &

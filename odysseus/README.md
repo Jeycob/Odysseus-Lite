@@ -100,7 +100,8 @@ restart will reset that admin password again.
 - Local LLM serving is not included. Point `ollama_base_url`, `llm_host`, or API
   keys to an external model provider.
 - If you use Ollama Lite on the same Home Assistant host, add it in Odysseus as
-  native Ollama:
+  native Ollama. Version 0.3.4 can create this endpoint automatically when
+  `auto_configure_ollama` is enabled:
 
   ```text
   Provider: Ollama
@@ -149,9 +150,33 @@ still take a long time. If it remains unusably slow, switch Ollama Lite to:
 qwen2.5-coder:3b
 ```
 
+## Home Assistant Ingress Model Picker
+
+The Home Assistant sidebar runs Odysseus under an Ingress path, not at `/`.
+Version 0.3.4 hardens URL rewriting so model and endpoint requests such as
+`/api/models` and `/api/model-endpoints` always go to Odysseus, not to Home
+Assistant's own `/api`.
+
+It also avoids a common Ollama setup trap: the Add Models UI previously turned
+`http://host:11434` into `http://host:11434/v1`. That uses Ollama's
+OpenAI-compatible surface. For local Ollama, keep the native URL without `/v1`.
+
+If the model picker still says "No models connected" after an update:
+
+1. Restart Odysseus Lite.
+2. Refresh the browser tab.
+3. In the add-on log, look for:
+
+   ```text
+   [Odysseus Lite] Added Ollama endpoint
+   ```
+
+4. If needed, open Settings > Admin > Endpoints and remove the old `/v1`
+   Ollama endpoint.
+
 ## Home Assistant sidebar
 
-Version 0.3.3 serves Home Assistant Ingress through a small wrapper on port
+Version 0.3.4 serves Home Assistant Ingress through a small wrapper on port
 8099. The wrapper removes iframe-blocking headers from Odysseus and rewrites
 absolute `/static` and `/api` paths so the UI can run inside the Home Assistant
 sidebar. It also rewrites Odysseus's same-origin absolute API URLs, which the

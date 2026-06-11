@@ -119,7 +119,10 @@ def _rewrite_text(text: str, content_type: str, base: str) -> str:
 }})();
 </script>
 """
-        text = text.replace("</head>", bootstrap + "</head>")
+        if "<head>" in text:
+            text = text.replace("<head>", "<head>" + bootstrap, 1)
+        else:
+            text = bootstrap + text
 
     if "javascript" in content_type or "text/html" in content_type:
         text = text.replace(
