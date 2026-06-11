@@ -3,7 +3,7 @@ FROM ${BUILD_FROM}
 
 ARG ODYSSEUS_REF=main
 ARG INSTALL_OPTIONAL=false
-ARG BUILD_VERSION=0.3.2
+ARG BUILD_VERSION=0.3.3
 ARG BUILD_ARCH=amd64
 
 LABEL \
@@ -36,6 +36,9 @@ WORKDIR /opt
 RUN git clone --depth 1 --branch "${ODYSSEUS_REF}" https://github.com/pewdiepie-archdaemon/odysseus.git odysseus
 
 WORKDIR /opt/odysseus
+
+COPY patch_odysseus.py /tmp/patch_odysseus.py
+RUN python /tmp/patch_odysseus.py /opt/odysseus
 
 RUN pip install -r requirements.txt \
     && if [ "${INSTALL_OPTIONAL}" = "true" ]; then pip install -r requirements-optional.txt; fi

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3
+
+- Make Odysseus LLM timeouts configurable from add-on options.
+- Patch upstream Odysseus to read local LLM timeout values from environment
+  variables.
+- Increase default local stream timeout to 600 seconds for slow CPU-only Ollama
+  models.
+- Document the recommended native Ollama endpoint and blank-reply
+  troubleshooting.
+
 ## 0.3.2
 
 - Validate `/data/odysseus/auth.json` on every start.

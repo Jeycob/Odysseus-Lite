@@ -100,15 +100,58 @@ restart will reset that admin password again.
 - Local LLM serving is not included. Point `ollama_base_url`, `llm_host`, or API
   keys to an external model provider.
 - If you use Ollama Lite on the same Home Assistant host, add it in Odysseus as
-  `http://192.168.0.127:11434` or OpenAI-compatible
-  `http://192.168.0.127:11434/v1`.
+  native Ollama:
+
+  ```text
+  Provider: Ollama
+  Base URL: http://192.168.0.127:11434
+  Model: qwen2.5-coder:7b
+  ```
+
+  Prefer this over OpenAI-compatible `/v1` for local Ollama. The native Ollama
+  route lets Odysseus use Ollama-specific request/stream handling.
 - Personal document semantic search needs an external ChromaDB server if you
   want that feature.
 - Web research works best with an external SearXNG instance.
 
+## Blank Replies With Ollama
+
+If Odysseus creates an empty assistant message and the Ollama Lite log shows
+`POST /v1/chat/completions` returning `500`, Odysseus is probably talking to
+Ollama through the OpenAI-compatible `/v1` endpoint and the local CPU model is
+too slow for the old request timeout.
+
+Use this endpoint in Odysseus instead:
+
+```text
+Provider: Ollama
+Base URL: http://192.168.0.127:11434
+Model: qwen2.5-coder:7b
+```
+
+Do not use:
+
+```text
+http://192.168.0.127:11434/v1
+```
+
+Version 0.3.3 also increases local LLM timeouts:
+
+```text
+llm_default_timeout_seconds: 120
+llm_stream_timeout_seconds: 600
+```
+
+On CPU-only thin-client hardware, the first token from `qwen2.5-coder:7b` can
+still take a long time. If it remains unusably slow, switch Ollama Lite to:
+
+```text
+qwen2.5-coder:3b
+```
+
 ## Home Assistant sidebar
 
-Version 0.3.2 serves Home Assistant Ingress through a small wrapper on port
+Version 0.3.3 serves Home Assistant Ingress through a small wrapper on port
 8099. The wrapper removes iframe-blocking headers from Odysseus and rewrites
 absolute `/static` and `/api` paths so the UI can run inside the Home Assistant
 sidebar. It also rewrites Odysseus's same-origin absolute API URLs, which the

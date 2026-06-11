@@ -43,6 +43,18 @@ emit("CHROMADB_PORT", options.get("chromadb_port", ""))
 emit("FASTEMBED_MODEL", options.get("fastembed_model", ""))
 
 try:
+    default_timeout = int(options.get("llm_default_timeout_seconds", 120))
+except (TypeError, ValueError):
+    default_timeout = 120
+try:
+    stream_timeout = int(options.get("llm_stream_timeout_seconds", 600))
+except (TypeError, ValueError):
+    stream_timeout = 600
+emit("ODYSSEUS_LLM_DEFAULT_TIMEOUT", max(default_timeout, 30))
+emit("ODYSSEUS_LLM_STREAM_TIMEOUT", max(stream_timeout, 60))
+emit("ODYSSEUS_AI_CHAT_TIMEOUT", max(stream_timeout, 60))
+
+try:
     upload_mb = int(options.get("chat_upload_max_mb", 10))
 except (TypeError, ValueError):
     upload_mb = 10
