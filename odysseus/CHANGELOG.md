@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Fix Odysseus API calls inside Home Assistant Ingress by rewriting same-origin
+  absolute URLs such as `http://homeassistant.local/api/sessions` to the
+  Ingress base path.
+- Stop rewriting normal JSON API responses in the proxy.
+
 ## 0.3.0
 
 - Route Home Assistant Ingress through a local wrapper on port 8099.

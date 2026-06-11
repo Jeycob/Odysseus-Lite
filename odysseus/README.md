@@ -33,7 +33,9 @@ print the temporary password in the add-on log.
 
 ## Home Assistant sidebar
 
-Version 0.3.0 serves Home Assistant Ingress through a small wrapper on port
+Version 0.3.1 serves Home Assistant Ingress through a small wrapper on port
 8099. The wrapper removes iframe-blocking headers from Odysseus and rewrites
 absolute `/static` and `/api` paths so the UI can run inside the Home Assistant
-sidebar. The direct web UI on port 7000 remains available.
+sidebar. It also rewrites Odysseus's same-origin absolute API URLs, which the
+frontend builds from `window.location.origin`. The direct web UI on port 7000
+remains available.

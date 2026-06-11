@@ -1,5 +1,4 @@
 import re
-from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from fastapi import FastAPI, Request
@@ -87,8 +86,15 @@ def _rewrite_text(text: str, content_type: str, base: str) -> str:
   window.__ODYSSEUS_BASE_PATH__ = base;
   const rewrite = (url) => {{
     if (typeof url !== 'string') return url;
-    if (!url.startsWith('/') || url.startsWith(base + '/')) return url;
-    if (/^\\/(api|static|login|notes|calendar|cookbook|email|memory|gallery|tasks|library|backgrounds)(\\/|$)/.test(url)) return base + url;
+    const targets = /^\\/(api|static|login|notes|calendar|cookbook|email|memory|gallery|tasks|library|backgrounds)(\\/|$)/;
+    try {{
+      const parsed = new URL(url, window.location.origin);
+      if (parsed.origin === window.location.origin && targets.test(parsed.pathname)) {{
+        return base + parsed.pathname + parsed.search + parsed.hash;
+      }}
+    }} catch (_) {{}}
+    if (url.startsWith(base + '/')) return url;
+    if (targets.test(url)) return base + url;
     return url;
   }};
   const oldFetch = window.fetch;
@@ -114,6 +120,12 @@ def _rewrite_text(text: str, content_type: str, base: str) -> str:
 </script>
 """
         text = text.replace("</head>", bootstrap + "</head>")
+
+    if "javascript" in content_type or "text/html" in content_type:
+        text = text.replace(
+            "const API_BASE = window.location.origin;",
+            "const API_BASE = window.location.origin + (window.__ODYSSEUS_BASE_PATH__ || '');",
+        )
 
     replacements = [
         ('href="/', f'href="{base}/'),
@@ -144,7 +156,6 @@ def _is_rewriteable(content_type: str) -> bool:
             "text/html",
             "text/css",
             "javascript",
-            "application/json",
             "application/manifest+json",
         )
     )
