@@ -1,6 +1,6 @@
 name: "Odysseus Lite"
 description: "Experimental Home Assistant add-on for the Odysseus self-hosted AI workspace."
-version: "0.3.1"
+version: "0.3.2"
 slug: "odysseus_lite"
 url: "https://github.com/pewdiepie-archdaemon/odysseus"
 arch:
@@ -27,6 +27,7 @@ map:
 options:
   auth_enabled: true
   admin_user: "admin"
+  reset_admin_password_on_start: false
   allowed_origins: "http://192.168.0.127:7000,http://homeassistant.local:7000,http://localhost:7000,http://127.0.0.1:7000"
   llm_host: "192.168.0.127"
   chromadb_port: 8000
@@ -36,6 +37,7 @@ schema:
   auth_enabled: bool
   admin_user: str
   admin_password: password?
+  reset_admin_password_on_start: bool
   allowed_origins: str
   llm_host: str
   llm_hosts: str?
