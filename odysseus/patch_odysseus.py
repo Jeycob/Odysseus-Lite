@@ -1402,6 +1402,165 @@ def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tupl
 )
 
 patch_file(
+    "src/tool_execution.py",
+    [
+        (
+            '''def _translate_bash_pseudo_tools(content: str) -> str:
+    """Recover common pseudo tool calls that small models put in Bash."""
+    if not content:
+        return content
+    content = re.sub(r"(?m)^([ \\t]*)(?:write_file|edit_file)\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
+    content = re.sub(r"(?m)(^|[ \\t])\\.\\\\(?=[^ \\t\\r\\n;&|]+)", r"\\1./", content)
+
+    fixed_lines = []
+    for raw_line in content.splitlines():
+''',
+            '''def _odysseus_lite_shell_write(path: str, body: str, indent: str = "") -> str:
+    q_path = shlex.quote(path)
+    return (
+        f'{indent}mkdir -p "$(dirname {q_path})"\\n'
+        f"{indent}cat > {q_path} <<'ODYSSEUS_LITE_EOF'\\n"
+        f"{body}\\n"
+        "ODYSSEUS_LITE_EOF"
+    )
+
+
+def _odysseus_lite_translate_quoted_file_tools(content: str) -> str:
+    """Turn `write_file path 'content'` style shell mistakes into heredocs."""
+    lines = content.splitlines()
+    out = []
+    i = 0
+    changed = False
+    opener = re.compile(r"^([ \\t]*)(?:write_file|edit_file|create_file)\\s+([^ \\t\\r\\n]+)\\s+(['\\\"])(.*)$")
+    while i < len(lines):
+        raw_line = lines[i]
+        match = opener.match(raw_line)
+        if not match:
+            out.append(raw_line)
+            i += 1
+            continue
+        indent, path, quote, rest = match.groups()
+        body_lines = []
+        if rest.endswith(quote) and len(rest) >= 1:
+            body_lines.append(rest[:-1])
+        else:
+            body_lines.append(rest)
+            i += 1
+            while i < len(lines):
+                part = lines[i]
+                if part.endswith(quote):
+                    body_lines.append(part[:-1])
+                    break
+                body_lines.append(part)
+                i += 1
+            else:
+                out.append(raw_line)
+                continue
+        out.append(_odysseus_lite_shell_write(path, "\\n".join(body_lines), indent))
+        changed = True
+        i += 1
+    return "\\n".join(out) if changed else content
+
+
+def _odysseus_lite_normalize_simple_bash_assignments(content: str) -> str:
+    """Recover simple Python-ish assignments that small models put in Bash."""
+    lines = content.splitlines()
+    out = []
+    in_list = False
+    changed = False
+    for raw_line in lines:
+        stripped = raw_line.strip()
+        indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
+        if not in_list:
+            match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*\\{\\s*$", stripped)
+            if match:
+                out.append(indent + match.group(1) + "=(")
+                in_list = True
+                changed = True
+                continue
+            match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*([^{};]+)\\s*$", stripped)
+            if match and not stripped.startswith(("if ", "for ", "while ")):
+                out.append(indent + match.group(1) + "=" + shlex.quote(match.group(2).strip()))
+                changed = True
+                continue
+        else:
+            if stripped == "}":
+                out.append(indent + ")")
+                in_list = False
+                changed = True
+                continue
+            out.append(raw_line.rstrip().rstrip(","))
+            changed = True
+            continue
+        out.append(raw_line)
+    return "\\n".join(out) if changed else content
+
+
+def _translate_bash_pseudo_tools(content: str) -> str:
+    """Recover common pseudo tool calls that small models put in Bash."""
+    if not content:
+        return content
+    content = _odysseus_lite_translate_quoted_file_tools(content)
+    content = re.sub(
+        r"(?m)^([ \\t]*)(?:write_file|edit_file|create_file)\\s+([^ \\t\\r\\n]+)\\s+<<",
+        lambda m: f'{m.group(1)}mkdir -p "$(dirname {shlex.quote(m.group(2))})"\\n{m.group(1)}cat > {shlex.quote(m.group(2))} <<',
+        content,
+    )
+    content = re.sub(r"(?m)(^|[ \\t])\\.\\\\(?=[^ \\t\\r\\n;&|]+)", r"\\1./", content)
+    content = _odysseus_lite_normalize_simple_bash_assignments(content)
+
+    fixed_lines = []
+    for raw_line in content.splitlines():
+''',
+        ),
+        (
+            '''                    if candidate and not os.path.exists(current_path):
+                        new_parts[idx] = candidate
+                        line_changed = True
+                    elif normalized != part:
+                        new_parts[idx] = normalized
+                        line_changed = True
+''',
+            '''                    if candidate and not os.path.exists(current_path):
+                        new_parts[idx] = candidate
+                        line_changed = True
+                    elif not os.path.exists(current_path):
+                        matches = []
+                        for dirpath, dirnames, filenames in os.walk(_AGENT_WORKDIR):
+                            dirnames[:] = [d for d in dirnames if d not in {"bin", "obj", "node_modules", ".git"}]
+                            if project_file in filenames:
+                                matches.append(os.path.join(dirpath, project_file))
+                                if len(matches) > 1:
+                                    break
+                        if len(matches) == 1:
+                            new_parts[idx] = matches[0]
+                            line_changed = True
+                        elif normalized != part:
+                            new_parts[idx] = normalized
+                            line_changed = True
+                    elif normalized != part:
+                        new_parts[idx] = normalized
+                        line_changed = True
+''',
+        ),
+        (
+            '''    run_cwd = _AGENT_SHELL_CWD if _AGENT_SHELL_CWD and os.path.isdir(_AGENT_SHELL_CWD) else base_cwd
+    if run_cwd and os.path.isdir(run_cwd):
+        return f"cd {shlex.quote(run_cwd)} &&\\n{content}", None, run_cwd
+    return content, None, base_cwd
+''',
+            '''    run_cwd = _AGENT_SHELL_CWD if _AGENT_SHELL_CWD and os.path.isdir(_AGENT_SHELL_CWD) else base_cwd
+    if os.path.exists("/bin/bash") and not re.match(r"(?s)^\\s*/bin/bash\\s+-lc\\b", content):
+        content = "/bin/bash -lc " + shlex.quote(content)
+    if run_cwd and os.path.isdir(run_cwd):
+        return f"cd {shlex.quote(run_cwd)} &&\\n{content}", None, run_cwd
+    return content, None, base_cwd
+''',
+        ),
+    ],
+)
+
+patch_file(
     "routes/shell_routes.py",
     [
         (

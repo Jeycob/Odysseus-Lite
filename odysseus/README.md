@@ -294,6 +294,13 @@ accidentally create a document containing a script instead of running the
 script. Odysseus Lite only converts them to Bash when the request is clearly
 asking for real project artifacts, builds, tests, or file changes.
 
+Version 0.3.28 extends that same compatibility layer to pseudo file-tool calls
+that small models put inside shell scripts. Forms like `create_file path
+<<EOF`, `write_file path <<EOF`, and simple quoted `write_file path 'content'`
+are translated into regular shell writes with parent directories created first.
+Recovered project shell blocks also run through Bash when it is available, so
+`source` and simple arrays behave as the model usually expects.
+
 It also recovers this common malformed tool block:
 
 ````text

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.28
+
+- Expand small-model Bash recovery for project-generation loops. Pseudo file
+  tool commands such as `create_file path <<EOF`, `write_file path <<EOF`, and
+  simple quoted `write_file path 'content'` are translated into ordinary shell
+  writes with parent directory creation.
+- Run recovered project Bash blocks through Bash when available, so common Bash
+  syntax such as `source` and array iteration does not fail under `/bin/sh`.
+- Recover simple Python-style shell assignments and unique missing `.csproj`
+  paths under the persistent workspace. These fixes are generic small-model
+  compatibility behavior, not tied to a specific sample project.
+
 ## 0.3.27
 
 - Recover another small-model Agent formatting mistake generically: executable

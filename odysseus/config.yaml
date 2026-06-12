@@ -1,6 +1,6 @@
 name: "Odysseus Lite"
 description: "Experimental Home Assistant add-on for the Odysseus self-hosted AI workspace."
-version: "0.3.27"
+version: "0.3.28"
 slug: "odysseus_lite"
 url: "https://github.com/pewdiepie-archdaemon/odysseus"
 arch:
