@@ -43,6 +43,47 @@ patch_file(
     "src/agent_loop.py",
     [
         (
+            "        # Execute each tool block\n"
+            "        tool_results = []\n"
+            "        tool_result_texts = []  # plain text for native tool role messages\n"
+            "        budget_hit = False\n",
+            "        # Execute each tool block\n"
+            "        tool_results = []\n"
+            "        tool_result_texts = []  # plain text for native tool role messages\n"
+            "        budget_hit = False\n"
+            "        _odysseus_lite_round_had_scaffold = False\n"
+            "        _odysseus_lite_round_had_source_edit = False\n"
+            "        _odysseus_lite_scaffold_only_verification = False\n",
+            False,
+        ),
+        (
+            "            if is_doc_tool:\n"
+            "                cmd_display = block.content.split(\"\\n\")[0].strip()[:80]\n"
+            "            else:\n"
+            "                cmd_display = block.content.strip()\n\n"
+            "            if tool_policy and tool_policy.blocks(block.tool_type):\n",
+            "            if is_doc_tool:\n"
+            "                cmd_display = block.content.split(\"\\n\")[0].strip()[:80]\n"
+            "            else:\n"
+            "                cmd_display = block.content.strip()\n\n"
+            "            if _odysseus_lite_action_recovery_enabled(model):\n"
+            "                _block_content = block.content or \"\"\n"
+            "                if block.tool_type == \"bash\" and _ODYSSEUS_LITE_SCAFFOLD_COMMAND_RE.search(_block_content):\n"
+            "                    _odysseus_lite_round_had_scaffold = True\n"
+            "                if block.tool_type in {\"write_file\", \"edit_file\", \"update_document\", \"edit_document\"}:\n"
+            "                    _odysseus_lite_round_had_source_edit = True\n"
+            "                elif block.tool_type == \"bash\" and _ODYSSEUS_LITE_SOURCE_EDIT_COMMAND_RE.search(_block_content):\n"
+            "                    _odysseus_lite_round_had_source_edit = True\n\n"
+            "            if tool_policy and tool_policy.blocks(block.tool_type):\n",
+            False,
+        ),
+    ],
+)
+
+patch_file(
+    "src/agent_loop.py",
+    [
+        (
             "import logging\n",
             "import logging\nimport os\n",
         ),
@@ -336,6 +377,21 @@ patch_file(
             "        r\"\\b(changed files?|created|updated|modified|wrote|built|build succeeded|tests? passed|installed|generated|implemented|fixed|summary)\\b\",\n"
             "        re.IGNORECASE,\n"
             "    )\n\n"
+            "    _ODYSSEUS_LITE_SCAFFOLD_COMMAND_RE = re.compile(\n"
+            "        r\"(?m)^\\s*(dotnet\\s+new|npm\\s+(?:create|init)|npx\\s+(?:create-|create\\s)|\"\n"
+            "        r\"pnpm\\s+create|yarn\\s+create|cargo\\s+new|django-admin\\s+startproject|rails\\s+new)\\b\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    _ODYSSEUS_LITE_SOURCE_EDIT_COMMAND_RE = re.compile(\n"
+            "        r\"(?m)^\\s*(cat\\s+>|tee\\s+|sed\\s+-i|perl\\s+-p?i|python3?\\s+.*(?:write_text|open\\(.+['\\\"]w)|\"\n"
+            "        r\"node\\s+-e\\s+.*writeFile|printf\\s+.*>\\s*|echo\\s+.*>\\s*)\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    _ODYSSEUS_LITE_DECLARED_SOURCE_EDIT_RE = re.compile(\n"
+            "        r\"(create|write|add|edit|update|modify|implement).{0,120}\"\n"
+            "        r\"(file|source|route|endpoint|controller|handler|component|program\\.cs|package\\.json)|```(?:csharp|cs|typescript|javascript|python|json|html|css)\",\n"
+            "        re.IGNORECASE | re.DOTALL,\n"
+            "    )\n\n"
             "    # \"I said I would, then didn't\" detector.",
             False,
         ),
@@ -401,8 +457,20 @@ patch_file(
             "            if _odysseus_lite_action_recovery_enabled(model):\n"
             "                _success_label = _odysseus_lite_successful_verification(block.tool_type, block.content, result)\n"
             "                if _success_label:\n"
-            "                    _odysseus_lite_completed_verification = _success_label\n"
-            "                    _odysseus_lite_stop_after_tool = True\n\n"
+            "                    _scaffold_only = (\n"
+            "                        _odysseus_lite_round_had_scaffold\n"
+            "                        and not _odysseus_lite_round_had_source_edit\n"
+            "                        and _ODYSSEUS_LITE_DECLARED_SOURCE_EDIT_RE.search(round_response or \"\")\n"
+            "                    )\n"
+            "                    if _scaffold_only:\n"
+            "                        _odysseus_lite_scaffold_only_verification = True\n"
+            "                        logger.info(\n"
+            "                            \"[odysseus-lite] deferring scaffold-only verification after %s\",\n"
+            "                            _success_label,\n"
+            "                        )\n"
+            "                    else:\n"
+            "                        _odysseus_lite_completed_verification = _success_label\n"
+            "                        _odysseus_lite_stop_after_tool = True\n\n"
             "            formatted = format_tool_result(desc, result)\n",
         ),
         (
@@ -420,6 +488,18 @@ patch_file(
         (
             "        # Feed results back to LLM for next round\n"
             "        _append_tool_results(messages, round_response, native_tool_calls,\n",
+            "        if _odysseus_lite_scaffold_only_verification:\n"
+            "            _workspace = os.getenv(\"ODYSSEUS_AGENT_WORKDIR\", \"/share/odysseus-workspace\")\n"
+            "            messages.append({\n"
+            "                \"role\": \"system\",\n"
+            "                \"content\": (\n"
+            "                    \"Odysseus Lite detected that the last successful build only proved a freshly scaffolded template. \"\n"
+            "                    \"Your previous response described source files, routes, endpoints, or implementation details, \"\n"
+            "                    \"but no real file-write/edit tool ran for those source changes. Continue with executable tools only. \"\n"
+            "                    \"Edit real project files under the persistent workspace, then run the verification command again. \"\n"
+            "                    f\"Workspace: {_workspace}.\"\n"
+            "                ),\n"
+            "            })\n\n"
             "        if _odysseus_lite_completed_verification:\n"
             "            logger.info(\n"
             "                \"[odysseus-lite] stopping small-model loop after successful verification: %s\",\n"

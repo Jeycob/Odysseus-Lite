@@ -107,6 +107,12 @@ when the following `cd Project` has not happened yet. It also cleans named
 workspace scaffold targets and normalizes Windows-style bash paths like
 `.\Project.csproj` to `./Project.csproj`.
 
+Odysseus Lite 0.3.24 keeps small local models from declaring victory after
+only building a fresh template. If the response described source files,
+routes, endpoints, or implementation details but no real write/edit tool ran,
+the Agent gets another round to edit project files under the workspace and
+verify again.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

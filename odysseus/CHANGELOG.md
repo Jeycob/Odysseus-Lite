@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.24
+
+- Prevent small-model Agent runs from stopping after a successful build of a
+  freshly scaffolded template when the same response described source files,
+  routes, endpoints, or implementation details that were never actually written
+  by a tool.
+- Add a follow-up nudge for scaffold-only verification: the model must edit real
+  project files in the persistent workspace and rerun verification before
+  Odysseus Lite marks the task complete.
+
 ## 0.3.23
 
 - Fix the 0.3.22 scaffold normalization so it tracks `cd` commands in order

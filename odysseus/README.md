@@ -261,6 +261,13 @@ has not changed into `Project` yet, while named workspace targets are still
 cleaned before recreate-style scaffolds. It also normalizes Windows-style bash
 paths like `.\Project.csproj` to `./Project.csproj`.
 
+Version 0.3.24 tightens completion detection for small local models. A
+successful build of a freshly scaffolded template is not enough when the model
+also described source files, routes, endpoints, or implementation details that
+were never written by a real tool. In that case Odysseus Lite sends the model
+another action round to edit project files under the workspace and verify
+again.
+
 It also recovers this common malformed tool block:
 
 ````text
