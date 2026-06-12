@@ -85,6 +85,25 @@ export ODYSSEUS_AGENT_WORKDIR
 export ODYSSEUS_TOOLS_DIR
 export PATH="${ODYSSEUS_AGENT_WORKDIR}/.local/bin:${ODYSSEUS_TOOLS_DIR}/bin:${ODYSSEUS_TOOLS_DIR}/dotnet:${PATH}"
 
+if [ -z "${ODYSSEUS_AGENT_SYSTEM_HINT:-}" ]; then
+  ODYSSEUS_AGENT_SYSTEM_HINT="$(cat <<EOF
+## Odysseus Lite Home Assistant Environment
+- You are running inside the Odysseus Lite Home Assistant add-on container.
+- The persistent user workspace is ${ODYSSEUS_AGENT_WORKDIR}. Create projects, source files, build outputs, and test files there unless the user gives another persistent /share path.
+- The persistent user tools directory is ${ODYSSEUS_TOOLS_DIR}. Prefer installing SDKs and user-level tools there so they survive add-on rebuilds.
+- Do not create user projects under /opt/odysseus, /root, /tmp, or /data unless specifically asked. Those are app/runtime locations, not the user's project workspace.
+- The container normally runs as root. Do not use sudo.
+- For action requests such as "create an app", "generate files", "install what is needed", or "fix this", use tools and do the work. Do not provide a tutorial unless blocked.
+- Node.js and npm are already installed. For Node apps, run npm commands inside a project directory under ${ODYSSEUS_AGENT_WORKDIR}.
+- For .NET, do not use apt-get install dotnet-sdk-* or Microsoft apt repositories. Use the helper: install-dotnet-sdk --channel 9.0. Then run dotnet commands from the project directory.
+- If apt is broken by /etc/apt/sources.list.d/dotnet.list, remove that file before any future apt-get command: rm -f /etc/apt/sources.list.d/dotnet.list.
+- apt-get is acceptable only for missing system packages/libraries. Packages installed with apt-get may disappear after an add-on update; keep durable project/tool state in /share.
+- After creating or changing a project, verify it with the relevant build, test, or smoke command before saying it is done.
+EOF
+)"
+  export ODYSSEUS_AGENT_SYSTEM_HINT
+fi
+
 if [ ! -f "${ODYSSEUS_AGENT_WORKDIR}/README.md" ]; then
   cat > "${ODYSSEUS_AGENT_WORKDIR}/README.md" <<'EOF'
 # Odysseus Workspace

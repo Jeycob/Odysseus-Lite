@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.6
+
+- Inject an Odysseus Lite environment guide into every Agent system prompt.
+- Teach the agent to use `/share/odysseus-workspace` for projects and
+  `/share/odysseus-tools` for persistent user tools.
+- Teach the agent to use `install-dotnet-sdk --channel 9.0` instead of Debian
+  or Microsoft `apt` packages for .NET.
+- Tell the agent to act with tools for app/file creation requests instead of
+  returning installation tutorials.
+- Include recovery guidance for malformed `dotnet.list` apt source files.
+
 ## 0.3.5
 
 - Add a persistent Home Assistant `/share/odysseus-workspace` agent workspace.

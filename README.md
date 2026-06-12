@@ -39,6 +39,10 @@ dotnet new web -o MiniTasks
 
 The helper installs .NET into persistent `/share` storage.
 
+Odysseus Lite 0.3.6 also injects those workspace/tooling rules into the Agent
+system prompt automatically, including the instruction to use
+`install-dotnet-sdk --channel 9.0` instead of `apt-get install dotnet-sdk-*`.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

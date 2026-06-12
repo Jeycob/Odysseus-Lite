@@ -32,6 +32,44 @@ patch_file(
 )
 
 patch_file(
+    "src/agent_loop.py",
+    [
+        (
+            "import logging\n",
+            "import logging\nimport os\n",
+        ),
+        (
+            "logger = logging.getLogger(__name__)\n",
+            "logger = logging.getLogger(__name__)\n\n\n"
+            "def _odysseus_lite_agent_hint() -> str:\n"
+            "    return os.getenv(\"ODYSSEUS_AGENT_SYSTEM_HINT\", \"\").strip()\n",
+        ),
+        (
+            "        parts = [\n"
+            "            \"You are an AI assistant with tool access.\",\n"
+            "            f\"Available tools: {tool_list}.\",\n"
+            "            _API_AGENT_RULES,\n"
+            "        ]",
+            "        parts = [\n"
+            "            \"You are an AI assistant with tool access.\",\n"
+            "            f\"Available tools: {tool_list}.\",\n"
+            "        ]\n"
+            "        _env_hint = _odysseus_lite_agent_hint()\n"
+            "        if _env_hint:\n"
+            "            parts.append(_env_hint)\n"
+            "        parts.append(_API_AGENT_RULES)",
+        ),
+        (
+            "    parts = [_AGENT_PREAMBLE]\n",
+            "    parts = [_AGENT_PREAMBLE]\n"
+            "    _env_hint = _odysseus_lite_agent_hint()\n"
+            "    if _env_hint:\n"
+            "        parts.append(_env_hint)\n",
+        ),
+    ],
+)
+
+patch_file(
     "src/llm_core.py",
     [
         ("import json\n", "import json\nimport os\n"),

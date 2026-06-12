@@ -184,6 +184,15 @@ If .NET is missing, run install-dotnet-sdk.
 Create the project files directly and then run a smoke test.
 ```
 
+Version 0.3.6 injects this environment knowledge into the Agent system prompt
+automatically. You should no longer need to repeat the workspace/tooling rules
+in every chat. For stubborn small local models, a short direct request still
+helps:
+
+```text
+Create the app now in /share/odysseus-workspace and verify it builds.
+```
+
 ## Blank Replies With Ollama
 
 If Odysseus creates an empty assistant message and the Ollama Lite log shows
