@@ -208,6 +208,12 @@ command exits successfully and prints a clear success signal, Odysseus Lite
 adds a short completion message instead of letting the model continue into
 unnecessary diagnostics.
 
+Version 0.3.17 also stops executing any remaining tool blocks from the same
+model round once that successful verification has been detected. This matters
+for small models that emit a good build/test command and then append stale
+diagnostics in the same response. The guard is generic: it applies to project
+verification commands across stacks, not just .NET or a specific sample app.
+
 It also recovers this common malformed tool block:
 
 ````text

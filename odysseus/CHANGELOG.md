@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.17
+
+- Stop executing any remaining tool blocks in the same small-model Agent round
+  after the first successful verification command. This prevents a weak model
+  from running stale follow-up diagnostics such as `sudo dotnet build` after a
+  previous `dotnet build`, `npm test`, lint, typecheck, or smoke check already
+  proved success.
+- Document that this completion guard is generic for build/test/lint/typecheck
+  and smoke checks, not tied to .NET or a specific sample project.
+
 ## 0.3.16
 
 - Stop small-model Agent loops after a successful verification tool result.

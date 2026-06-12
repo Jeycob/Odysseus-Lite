@@ -66,6 +66,11 @@ Odysseus Lite 0.3.16 also stops small-model Agent loops after a successful
 build/test/lint/typecheck/smoke tool result, so the model does not continue
 into unnecessary diagnostics after the output already proves success.
 
+Odysseus Lite 0.3.17 tightens that behavior further: if a small model emits
+several tool blocks in one round, Odysseus stops executing the remaining blocks
+immediately after the first successful verification command. This is generic
+for project work and is not tied to .NET or any particular sample app.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

@@ -243,6 +243,7 @@ patch_file(
             "    _ODYSSEUS_LITE_MAX_FALSE_DONE_NUDGES = 2\n"
             "    _odysseus_lite_false_done_nudges = 0\n"
             "    _odysseus_lite_completed_verification = \"\"\n"
+            "    _odysseus_lite_stop_after_tool = False\n"
             "    _ODYSSEUS_LITE_ACTION_RE = re.compile(\n"
             "        r\"\\b(create|recreate|generate|scaffold|build|fix|install|write|edit|make|implement|add|update|modify|run|test|lint|typecheck)\\b\",\n"
             "        re.IGNORECASE,\n"
@@ -323,8 +324,21 @@ patch_file(
             "            if _odysseus_lite_action_recovery_enabled(model):\n"
             "                _success_label = _odysseus_lite_successful_verification(block.tool_type, block.content, result)\n"
             "                if _success_label:\n"
-            "                    _odysseus_lite_completed_verification = _success_label\n\n"
+            "                    _odysseus_lite_completed_verification = _success_label\n"
+            "                    _odysseus_lite_stop_after_tool = True\n\n"
             "            formatted = format_tool_result(desc, result)\n",
+        ),
+        (
+            "            tool_results.append(formatted)\n"
+            "            tool_result_texts.append(formatted)\n",
+            "            tool_results.append(formatted)\n"
+            "            tool_result_texts.append(formatted)\n"
+            "            if _odysseus_lite_stop_after_tool:\n"
+            "                logger.info(\n"
+            "                    \"[odysseus-lite] skipping remaining tool blocks after successful verification: %s\",\n"
+            "                    _odysseus_lite_completed_verification,\n"
+            "                )\n"
+            "                break\n",
         ),
         (
             "        # Feed results back to LLM for next round\n"
