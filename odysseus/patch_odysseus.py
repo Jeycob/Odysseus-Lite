@@ -804,7 +804,7 @@ patch_file(
                 name = name[:-7]
             if name:
                 rest = parts[4:]
-                if "--force" not in rest and "-f" not in rest:
+                if "--force" not in rest:
                     rest = [*rest, "--force"]
                 indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
                 fixed = ["dotnet", "new", parts[2], "-n", name, *rest]
@@ -829,6 +829,98 @@ patch_file(
                 return cd_result
             proc = await asyncio.create_subprocess_shell(
                 content,
+''',
+            False,
+        ),
+    ],
+)
+
+patch_file(
+    "src/tool_execution.py",
+    [
+        (
+            '''def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tuple[str, Optional[Dict], str]:
+    """Make separate `cd` and later command tool calls behave like a shell."""
+''',
+            '''def _odysseus_lite_normalize_current_dir_scaffold(content: str, cwd: str) -> str:
+    """Avoid nested projects when a model already cd'd into the target dir."""
+    if not content or not cwd:
+        return content
+    cwd_name = pathlib.Path(cwd).name
+    if not cwd_name:
+        return content
+
+    fixed_lines = []
+    nested_names = set()
+    changed = False
+    for raw_line in content.splitlines():
+        stripped = raw_line.strip()
+        indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
+        if not stripped or stripped.startswith("#"):
+            fixed_lines.append(raw_line)
+            continue
+        try:
+            parts = shlex.split(stripped)
+        except ValueError:
+            fixed_lines.append(raw_line)
+            continue
+
+        if nested_names and len(parts) == 2 and parts[0] == "cd":
+            cd_path = pathlib.Path(parts[1])
+            if not cd_path.is_absolute() and cd_path.name in nested_names:
+                fixed_lines.append(indent + ": # Odysseus Lite: already in current scaffold directory")
+                changed = True
+                continue
+
+        if len(parts) >= 3 and parts[0] == "dotnet" and parts[1] == "new":
+            new_parts = parts[:3]
+            removed_name = None
+            i = 3
+            while i < len(parts):
+                part = parts[i]
+                if part in ("-n", "--name", "-o", "--output") and i + 1 < len(parts):
+                    value = parts[i + 1]
+                    if pathlib.Path(value).name == cwd_name:
+                        removed_name = cwd_name
+                        i += 2
+                        continue
+                    new_parts.extend([part, value])
+                    i += 2
+                    continue
+                if part.startswith("--name=") or part.startswith("--output="):
+                    value = part.split("=", 1)[1]
+                    if pathlib.Path(value).name == cwd_name:
+                        removed_name = cwd_name
+                        i += 1
+                        continue
+                new_parts.append(part)
+                i += 1
+            if removed_name:
+                if "--force" not in new_parts:
+                    new_parts.append("--force")
+                fixed_lines.append(indent + " ".join(shlex.quote(p) for p in new_parts))
+                nested_names.add(removed_name)
+                changed = True
+                continue
+
+        fixed_lines.append(raw_line)
+
+    return "\\n".join(fixed_lines) if changed else content
+
+
+def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tuple[str, Optional[Dict], str]:
+    """Make separate `cd` and later command tool calls behave like a shell."""
+''',
+            False,
+        ),
+        (
+            '''    content = _odysseus_lite_prepare_scaffold_content(content, base_cwd)
+    last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
+''',
+            '''    scaffold_cwd = _odysseus_lite_last_cd_target(content, base_cwd) or base_cwd
+    content = _odysseus_lite_normalize_current_dir_scaffold(content, scaffold_cwd)
+    content = _odysseus_lite_prepare_scaffold_content(content, scaffold_cwd)
+    last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
 ''',
             False,
         ),

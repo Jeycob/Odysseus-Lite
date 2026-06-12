@@ -94,6 +94,13 @@ execution path used by upstream Odysseus and recovers a common .NET CLI
 shorthand mistake, `dotnet new <template> <name-or-csproj>`, by converting it
 to a valid named project scaffold command.
 
+Odysseus Lite 0.3.22 fixes another small-model scaffold pattern: if the model
+has already `cd`'d into the requested project directory, a named scaffold such
+as `dotnet new webapi -n <same-name>` is normalized to create files in the
+current directory instead of nesting a duplicate project. The cleanup guard now
+uses the effective directory from multi-line bash blocks, not only the initial
+shell directory.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

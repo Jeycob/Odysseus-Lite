@@ -248,6 +248,13 @@ scaffold hygiene. It also recovers the common .NET CLI shorthand mistake
 `dotnet new <template> -n <name> --force` before execution. That recovery is
 generic for .NET project scaffolding and is not tied to MiniTasks.
 
+Version 0.3.22 adds one more small-model scaffold correction. If the model has
+already changed into the intended project directory, a command that names that
+same directory again, such as `dotnet new webapi -n <current-directory>`, is
+rewritten to scaffold in the current directory. A redundant following
+`cd <current-directory>` is skipped, and guarded cleanup is based on the
+effective directory from the multi-line Bash block.
+
 It also recovers this common malformed tool block:
 
 ````text

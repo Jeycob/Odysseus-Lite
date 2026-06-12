@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.22
+
+- Normalize another small-model scaffold loop: when a model has already moved
+  into the requested project directory, commands such as
+  `dotnet new webapi -n <current-directory>` are converted to scaffold in the
+  current directory instead of creating a nested duplicate project. A following
+  redundant `cd <current-directory>` is skipped.
+- Apply guarded cleanup using the effective shell directory from a multi-line
+  Bash block, so recreate requests clean the intended workspace child directory
+  before the scaffold runs.
+
 ## 0.3.21
 
 - Apply the small-model bash normalization layer to the direct native bash
