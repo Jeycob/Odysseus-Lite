@@ -202,6 +202,12 @@ language, sample app, or framework. It applies to action requests involving
 project files, dependencies, builds, tests, linting, typechecking, package
 managers, or source directories.
 
+Version 0.3.16 also hard-stops the Agent loop after a successful verification
+tool result for small models. If a build, test, lint, typecheck, or smoke
+command exits successfully and prints a clear success signal, Odysseus Lite
+adds a short completion message instead of letting the model continue into
+unnecessary diagnostics.
+
 It also recovers this common malformed tool block:
 
 ````text

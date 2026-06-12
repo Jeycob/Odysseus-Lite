@@ -135,6 +135,52 @@ patch_file(
             "    return os.getenv(\"ODYSSEUS_SMALL_MODEL_AGENT_HINT\", \"\").strip()\n\n\n"
             "def _odysseus_lite_action_recovery_enabled(model: str) -> bool:\n"
             "    return _odysseus_lite_is_small_model(model)\n\n\n"
+            "def _odysseus_lite_successful_verification(tool_type: str, command: str, result: Dict) -> str:\n"
+            "    if tool_type not in {\"bash\", \"python\"}:\n"
+            "        return \"\"\n"
+            "    try:\n"
+            "        exit_code = int(result.get(\"exit_code\", 1))\n"
+            "    except (TypeError, ValueError):\n"
+            "        return \"\"\n"
+            "    if exit_code != 0:\n"
+            "        return \"\"\n"
+            "    cmd = command or \"\"\n"
+            "    verify_re = re.compile(\n"
+            "        r\"\\b(\"\n"
+            "        r\"dotnet\\s+(?:build|test)|\"\n"
+            "        r\"npm\\s+(?:test|run\\s+(?:build|test|lint|typecheck))|\"\n"
+            "        r\"pnpm\\s+(?:test|run\\s+(?:build|test|lint|typecheck))|\"\n"
+            "        r\"yarn\\s+(?:test|build|lint|typecheck)|\"\n"
+            "        r\"pytest|python\\s+-m\\s+pytest|\"\n"
+            "        r\"cargo\\s+(?:build|test|check)|go\\s+(?:build|test)|\"\n"
+            "        r\"mvn\\s+test|gradle\\s+test|make\\s+(?:build|test|check)|\"\n"
+            "        r\"ruff\\s+check|eslint|tsc\\b|curl\\b|wget\\b\"\n"
+            "        r\")\\b\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    if not verify_re.search(cmd):\n"
+            "        return \"\"\n"
+            "    out = \"\\n\".join(\n"
+            "        str(result.get(k, \"\"))\n"
+            "        for k in (\"output\", \"stdout\", \"stderr\", \"results\", \"content\")\n"
+            "        if result.get(k) is not None\n"
+            "    )\n"
+            "    combined = f\"{cmd}\\n{out}\"\n"
+            "    success_re = re.compile(\n"
+            "        r\"(build\\s+succeeded|build\\s+successful|successfully\\s+built|compiled\\s+successfully|\"\n"
+            "        r\"0\\s+error\\(s\\)|0\\s+errors?\\b|tests?\\s+passed|all\\s+tests?\\s+passed|\"\n"
+            "        r\"tests?:\\s*\\d+\\s+passed|test\\s+suites?:\\s*\\d+\\s+passed|\"\n"
+            "        r\"test\\s+result:\\s+ok|=+\\s*\\d+\\s+passed|\\bpassed\\s+in\\s+\\d|\"\n"
+            "        r\"http/\\S+\\s+200\\b|\\b200\\s+ok\\b|finished\\s+.*\\s+target)\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    if not success_re.search(combined):\n"
+            "        return \"\"\n"
+            "    for line in cmd.splitlines():\n"
+            "        line = line.strip()\n"
+            "        if line and not line.startswith(\"#\") and verify_re.search(line):\n"
+            "            return line[:160]\n"
+            "    return \"verification command\"\n\n\n"
             "def _odysseus_lite_recover_prefixed_tool_blocks(text: str, disabled_tools: Optional[set] = None) -> List[ToolBlock]:\n"
             "    \"\"\"Recover untagged fences whose first line is a tool name.\n\n"
             "    Small local models often emit ```\\nbash\\n...``` instead of\n"
@@ -196,6 +242,7 @@ patch_file(
             "    _MAX_INTENT_NUDGES = 2\n"
             "    _ODYSSEUS_LITE_MAX_FALSE_DONE_NUDGES = 2\n"
             "    _odysseus_lite_false_done_nudges = 0\n"
+            "    _odysseus_lite_completed_verification = \"\"\n"
             "    _ODYSSEUS_LITE_ACTION_RE = re.compile(\n"
             "        r\"\\b(create|recreate|generate|scaffold|build|fix|install|write|edit|make|implement|add|update|modify|run|test|lint|typecheck)\\b\",\n"
             "        re.IGNORECASE,\n"
@@ -260,6 +307,39 @@ patch_file(
             "                continue\n"
             "            # Only nudge when the round REALLY looks like an unfinished\n",
             False,
+        ),
+    ],
+)
+
+patch_file(
+    "src/agent_loop.py",
+    [
+        (
+            "            if block.tool_type in _VERIFIER_EFFECTFUL_TOOLS:\n"
+            "                _effectful_used = True\n\n"
+            "            formatted = format_tool_result(desc, result)\n",
+            "            if block.tool_type in _VERIFIER_EFFECTFUL_TOOLS:\n"
+            "                _effectful_used = True\n"
+            "            if _odysseus_lite_action_recovery_enabled(model):\n"
+            "                _success_label = _odysseus_lite_successful_verification(block.tool_type, block.content, result)\n"
+            "                if _success_label:\n"
+            "                    _odysseus_lite_completed_verification = _success_label\n\n"
+            "            formatted = format_tool_result(desc, result)\n",
+        ),
+        (
+            "        # Feed results back to LLM for next round\n"
+            "        _append_tool_results(messages, round_response, native_tool_calls,\n",
+            "        if _odysseus_lite_completed_verification:\n"
+            "            logger.info(\n"
+            "                \"[odysseus-lite] stopping small-model loop after successful verification: %s\",\n"
+            "                _odysseus_lite_completed_verification,\n"
+            "            )\n"
+            "            _done = f\"\\n\\nDone. Verification passed: `{_odysseus_lite_completed_verification}`.\"\n"
+            "            yield f'data: {json.dumps({\"delta\": _done})}\\n\\n'\n"
+            "            full_response += _done\n"
+            "            break\n\n"
+            "        # Feed results back to LLM for next round\n"
+            "        _append_tool_results(messages, round_response, native_tool_calls,\n",
         ),
     ],
 )

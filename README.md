@@ -62,6 +62,10 @@ false "created/built/changed" completions applies only when the selected model
 name looks like a small local model, with the threshold controlled by the
 `small_model_max_parameters_b` add-on option.
 
+Odysseus Lite 0.3.16 also stops small-model Agent loops after a successful
+build/test/lint/typecheck/smoke tool result, so the model does not continue
+into unnecessary diagnostics after the output already proves success.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

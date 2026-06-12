@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.16
+
+- Stop small-model Agent loops after a successful verification tool result.
+  If a build/test/lint/typecheck/smoke command exits with success and prints a
+  clear success signal such as `Build succeeded`, `0 Error(s)`, or tests
+  passed, Odysseus Lite now ends the task instead of letting the model continue
+  into unnecessary diagnostics.
+- Add explicit small-model guidance not to reinstall tools, retry with `sudo`,
+  or keep troubleshooting after verification succeeded.
+
 ## 0.3.15
 
 - Harden first-login behavior in Home Assistant Ingress/mobile WebViews:
