@@ -287,6 +287,13 @@ lifecycle Bash blocks also run in fail-fast mode, so a failed edit, rename, or
 generated command cannot be hidden by a later successful build of unrelated
 template code.
 
+Version 0.3.27 also recovers executable shell code blocks tagged as `sh`,
+`shell`, `zsh`, `dash`, or `ksh` during small-model action requests. Upstream
+Odysseus normally treats those tags as display code, which means the model can
+accidentally create a document containing a script instead of running the
+script. Odysseus Lite only converts them to Bash when the request is clearly
+asking for real project artifacts, builds, tests, or file changes.
+
 It also recovers this common malformed tool block:
 
 ````text

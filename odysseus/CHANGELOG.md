@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.27
+
+- Recover another small-model Agent formatting mistake generically: executable
+  shell fences tagged as `sh`, `shell`, `zsh`, `dash`, or `ksh` are treated as
+  Bash in action requests when upstream would otherwise save them as inert code
+  documents. This keeps project-generation scripts executable without making
+  the workaround specific to .NET, MiniTasks, or any one framework.
+- Keep the recovery scoped to small models and action/artifact requests. Normal
+  code examples and large documentation snippets still remain documents.
+
 ## 0.3.26
 
 - Make small-model verification stricter after successful build/test commands.
