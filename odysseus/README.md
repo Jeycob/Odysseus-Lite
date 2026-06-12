@@ -182,3 +182,40 @@ absolute `/static` and `/api` paths so the UI can run inside the Home Assistant
 sidebar. It also rewrites Odysseus's same-origin absolute API URLs, which the
 frontend builds from `window.location.origin`. The direct web UI on port 7000
 remains available.
+
+## Smoke Testing
+
+This repository includes a dependency-free smoke test script for a running
+Odysseus Lite instance. Run it from the repository root:
+
+```bash
+ODYSSEUS_USERNAME=admin \
+ODYSSEUS_PASSWORD='your-password' \
+python3 tools/odysseus_smoke.py --base-url http://192.168.0.127:7000
+```
+
+The default test logs in and checks the main HTML pages plus read-only API
+endpoints for auth, sessions, models, notes, tasks, gallery, documents,
+research, calendar, email, preferences, and diagnostics.
+
+To also verify Ollama directly:
+
+```bash
+ODYSSEUS_USERNAME=admin \
+ODYSSEUS_PASSWORD='your-password' \
+OLLAMA_BASE_URL=http://192.168.0.127:11434 \
+python3 tools/odysseus_smoke.py --base-url http://192.168.0.127:7000
+```
+
+To run a real end-to-end chat check, add `--chat`. This creates a temporary
+Odysseus chat session and sends a short prompt to the selected model:
+
+```bash
+ODYSSEUS_USERNAME=admin \
+ODYSSEUS_PASSWORD='your-password' \
+OLLAMA_BASE_URL=http://192.168.0.127:11434 \
+python3 tools/odysseus_smoke.py \
+  --base-url http://192.168.0.127:7000 \
+  --chat \
+  --chat-model qwen2.5-coder:3b
+```
