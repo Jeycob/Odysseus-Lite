@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.12
+
+- Tighten the Agent system prompt for small local coding models.
+- Tell the Agent to write real project files with file tools instead of
+  creating detached code/document panels.
+- Tell the Agent to choose web templates for ASP.NET Core web app requests
+  instead of falling back to console apps.
+- Tell the Agent to stop after a successful build or smoke test instead of
+  repeating troubleshooting steps.
+
 ## 0.3.11
 
 - Make the login page conservative about first-run setup: show setup only when

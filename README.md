@@ -65,6 +65,11 @@ Odysseus Lite 0.3.11 makes the login page safer in Home Assistant mobile
 Ingress: stale or uncertain auth status falls back to Sign In instead of
 incorrectly showing first-time setup.
 
+Odysseus Lite 0.3.12 tightens the Agent instructions for small local coding
+models. It tells the Agent to write source code into real project files, choose
+web templates for ASP.NET Core web app requests, and stop after a successful
+build or smoke test instead of repeating troubleshooting text.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

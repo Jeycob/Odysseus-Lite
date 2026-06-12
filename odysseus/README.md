@@ -177,6 +177,24 @@ Version 0.3.8 also makes standalone `cd <dir>` Bash calls sticky for following
 Bash calls in the same running add-on process. This helps small local models
 that split `cd MiniTasks` and `dotnet run` into separate tool calls.
 
+For coding tasks, the Agent should create real source files under
+`/share/odysseus-workspace`, not detached Odysseus document/code panels. Version
+0.3.12 adds that rule to the automatic Agent prompt and also tells the Agent to
+stop once a build or smoke test succeeds. This matters most for small local
+models such as 3B/7B coders, which can otherwise keep repeating the same
+troubleshooting checklist after the tool output already shows success.
+
+For an ASP.NET Core web app, prefer a prompt like:
+
+```text
+Create an ASP.NET Core minimal API named MiniTasks.
+Use write_file/edit_file for project files. Do not use create_document.
+Use dotnet new web or webapi, not console.
+Create it in /share/odysseus-workspace/MiniTasks.
+Run dotnet build /share/odysseus-workspace/MiniTasks/MiniTasks.csproj.
+Stop after the build succeeds and summarize only the changed files.
+```
+
 For setup that should replay on every add-on start, create:
 
 ```text
