@@ -81,22 +81,82 @@ patch_file(
     "src/agent_loop.py",
     [
         (
+            "def _odysseus_lite_agent_hint() -> str:\n"
+            "    return os.getenv(\"ODYSSEUS_AGENT_SYSTEM_HINT\", \"\").strip()\n",
+            "def _odysseus_lite_agent_hint() -> str:\n"
+            "    return os.getenv(\"ODYSSEUS_AGENT_SYSTEM_HINT\", \"\").strip()\n\n\n"
+            "def _odysseus_lite_recover_prefixed_tool_blocks(text: str, disabled_tools: Optional[set] = None) -> List[ToolBlock]:\n"
+            "    \"\"\"Recover untagged fences whose first line is a tool name.\n\n"
+            "    Small local models often emit ```\\nbash\\n...``` instead of\n"
+            "    ```bash\\n...```. Upstream treats that as ordinary markdown, so\n"
+            "    nothing executes. Odysseus Lite recovers this only for action/coding\n"
+            "    turns at the call site.\n"
+            "    \"\"\"\n"
+            "    disabled_tools = disabled_tools or set()\n"
+            "    executable = {\"bash\", \"python\", \"write_file\", \"read_file\", \"edit_file\"}\n"
+            "    blocks: List[ToolBlock] = []\n"
+            "    for match in re.finditer(r\"```([^`\\n]*)\\n([\\s\\S]*?)```\", text or \"\"):\n"
+            "        lang = (match.group(1) or \"\").strip().lower()\n"
+            "        if lang in TOOL_TAGS:\n"
+            "            continue\n"
+            "        lines = match.group(2).splitlines()\n"
+            "        while lines and not lines[0].strip():\n"
+            "            lines.pop(0)\n"
+            "        if not lines:\n"
+            "            continue\n"
+            "        tool = lines[0].strip().strip(\"`\").lower()\n"
+            "        if tool not in executable or tool in disabled_tools:\n"
+            "            continue\n"
+            "        content = \"\\n\".join(lines[1:]).strip(\"\\n\")\n"
+            "        if not content.strip():\n"
+            "            continue\n"
+            "        blocks.append(ToolBlock(tool, content))\n"
+            "    return blocks\n",
+            False,
+        ),
+        (
+            "        tool_blocks, used_native = _resolve_tool_blocks(round_response, native_tool_calls, round_num, is_api_model=_is_api_model)\n\n"
+            "        # Force-answer round: we told the model to STOP calling tools and\n",
+            "        tool_blocks, used_native = _resolve_tool_blocks(round_response, native_tool_calls, round_num, is_api_model=_is_api_model)\n"
+            "        if not tool_blocks and not _force_answer:\n"
+            "            _odysseus_lite_original = _verifier_instruction or \"\"\n"
+            "            _odysseus_lite_combined = f\"{_odysseus_lite_original}\\n{round_response}\"\n"
+            "            if (_ODYSSEUS_LITE_ACTION_RE.search(_odysseus_lite_original)\n"
+            "                    and _ODYSSEUS_LITE_CODING_RE.search(_odysseus_lite_combined)):\n"
+            "                _recovered_blocks = _odysseus_lite_recover_prefixed_tool_blocks(round_response, disabled_tools)\n"
+            "                if _recovered_blocks:\n"
+            "                    logger.info(\n"
+            "                        \"[odysseus-lite] recovered %s prefixed fenced tool block(s)\",\n"
+            "                        len(_recovered_blocks),\n"
+            "                    )\n"
+            "                    tool_blocks.extend(_recovered_blocks)\n"
+            "                    used_native = False\n\n"
+            "        # Force-answer round: we told the model to STOP calling tools and\n",
+            False,
+        ),
+    ],
+)
+
+patch_file(
+    "src/agent_loop.py",
+    [
+        (
             "    _MAX_INTENT_NUDGES = 2\n\n"
             "    # \"I said I would, then didn't\" detector.",
             "    _MAX_INTENT_NUDGES = 2\n"
             "    _ODYSSEUS_LITE_MAX_FALSE_DONE_NUDGES = 2\n"
             "    _odysseus_lite_false_done_nudges = 0\n"
             "    _ODYSSEUS_LITE_ACTION_RE = re.compile(\n"
-            "        r\"\\\\b(create|recreate|generate|scaffold|build|fix|install|write|edit|make)\\\\b\",\n"
+            "        r\"\\b(create|recreate|generate|scaffold|build|fix|install|write|edit|make)\\b\",\n"
             "        re.IGNORECASE,\n"
             "    )\n"
             "    _ODYSSEUS_LITE_CODING_RE = re.compile(\n"
-            "        r\"(/share/odysseus-workspace|dotnet|asp\\\\.net|webapi|web app|program\\\\.cs|\"\n"
-            "        r\"\\\\.csproj|write_file|edit_file|create_document|project files|miniTasks)\",\n"
+            "        r\"(/share/odysseus-workspace|dotnet|asp\\.net|webapi|web app|program\\.cs|\"\n"
+            "        r\"\\.csproj|write_file|edit_file|create_document|project files|miniTasks)\",\n"
             "        re.IGNORECASE,\n"
             "    )\n"
             "    _ODYSSEUS_LITE_FALSE_DONE_RE = re.compile(\n"
-            "        r\"\\\\b(changed files|created|updated|built|build succeeded|successfully|summary)\\\\b\",\n"
+            "        r\"\\b(changed files|created|updated|built|build succeeded|successfully|summary)\\b\",\n"
             "        re.IGNORECASE,\n"
             "    )\n\n"
             "    # \"I said I would, then didn't\" detector.",

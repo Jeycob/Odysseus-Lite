@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.14
+
+- Recover a common small-model tool formatting mistake where the model writes
+  an untagged code fence whose first line is `bash`, `write_file`, or another
+  tool name. Odysseus Lite now converts that into a real executable tool block
+  for coding/action requests.
+- Make the Agent prompt stricter about putting `bash` in the code-fence tag,
+  not as the first line inside a generic code block.
+
 ## 0.3.13
 
 - Add a false-completion guard for coding tasks: if a small local model claims

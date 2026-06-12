@@ -75,6 +75,10 @@ small local model claims that files were created or a build passed without any
 tool execution, the add-on nudges it to run real `bash`/file tools instead of
 accepting the answer as done.
 
+Odysseus Lite 0.3.14 recovers a common 3B-model formatting mistake where the
+model writes `bash` as the first line inside an untagged code block instead of
+using an executable `bash` fence.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

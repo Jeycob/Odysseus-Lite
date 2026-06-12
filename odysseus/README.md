@@ -189,6 +189,23 @@ that files were changed or a build passed even though no tool ran. When that
 happens during a coding task, Odysseus sends the model a retry instruction to
 use real `bash`, `write_file`, or `edit_file` tool blocks.
 
+Version 0.3.14 also recovers this common malformed tool block:
+
+````text
+```
+bash
+dotnet build /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
+```
+````
+
+For coding/action requests, Odysseus Lite treats it like the executable form:
+
+````text
+```bash
+dotnet build /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
+```
+````
+
 For an ASP.NET Core web app, prefer a prompt like:
 
 ```text

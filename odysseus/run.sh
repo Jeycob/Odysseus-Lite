@@ -100,6 +100,7 @@ if [ -z "${ODYSSEUS_AGENT_SYSTEM_HINT:-}" ]; then
   \`\`\`bash
   dotnet build ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks/MiniTasks.csproj
   \`\`\`
+- The word bash must be in the opening fence tag. Do not write an untagged code block whose first line is bash.
 - To create a file, output an executable fenced tool block tagged write_file. The first line is the path and the rest is file content.
 - For project source code, use file tools such as write_file and edit_file to create or update real files under ${ODYSSEUS_AGENT_WORKDIR}. Do not use create_document or detached code/document panels for project files.
 - Match the requested project type. If the user asks for an ASP.NET Core web app or API, create a web project with dotnet new web, webapi, mvc, or razor; do not create a console app unless the user asks for a console app.
