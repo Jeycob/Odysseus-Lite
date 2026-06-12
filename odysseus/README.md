@@ -173,6 +173,10 @@ cd /share/odysseus-workspace/MiniTasks && dotnet run
 dotnet run --project /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
 ```
 
+Version 0.3.8 also makes standalone `cd <dir>` Bash calls sticky for following
+Bash calls in the same running add-on process. This helps small local models
+that split `cd MiniTasks` and `dotnet run` into separate tool calls.
+
 For setup that should replay on every add-on start, create:
 
 ```text

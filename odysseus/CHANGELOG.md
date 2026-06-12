@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.8
+
+- Make the native Bash agent tool remember a successful standalone `cd <dir>`
+  command and run later Bash commands from that directory.
+- This makes small local models more forgiving when they split `cd project`
+  and `dotnet run` into separate tool calls.
+
 ## 0.3.7
 
 - Tell the agent that Bash tool calls are stateless and `cd` does not persist
