@@ -89,6 +89,11 @@ bash blocks and can prepare a clean target directory under
 `/share/odysseus-workspace`. It refuses to auto-clean paths outside the
 workspace or directories containing `.git`.
 
+Odysseus Lite 0.3.21 applies that normalization to the current native bash
+execution path used by upstream Odysseus and recovers a common .NET CLI
+shorthand mistake, `dotnet new <template> <name-or-csproj>`, by converting it
+to a valid named project scaffold command.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

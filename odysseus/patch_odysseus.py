@@ -762,6 +762,80 @@ def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tupl
 )
 
 patch_file(
+    "src/tool_execution.py",
+    [
+        (
+            '''def _translate_bash_pseudo_tools(content: str) -> str:
+    """Recover common pseudo tool calls that small models put in Bash."""
+    if not content:
+        return content
+    content = re.sub(r"(?m)^([ \\t]*)write_file\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
+    return content
+
+''',
+            '''def _translate_bash_pseudo_tools(content: str) -> str:
+    """Recover common pseudo tool calls that small models put in Bash."""
+    if not content:
+        return content
+    content = re.sub(r"(?m)^([ \\t]*)write_file\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
+
+    fixed_lines = []
+    for raw_line in content.splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            fixed_lines.append(raw_line)
+            continue
+        try:
+            parts = shlex.split(stripped)
+        except ValueError:
+            fixed_lines.append(raw_line)
+            continue
+        # Small models often write `dotnet new webapi MyApp` or
+        # `dotnet new webapi MyApp.csproj`. The .NET CLI treats that trailing
+        # token as an invalid option. Interpret it as the project name.
+        if (
+            len(parts) >= 4
+            and parts[0] == "dotnet"
+            and parts[1] == "new"
+            and not parts[3].startswith("-")
+        ):
+            name = pathlib.Path(parts[3]).name
+            if name.endswith(".csproj"):
+                name = name[:-7]
+            if name:
+                rest = parts[4:]
+                if "--force" not in rest and "-f" not in rest:
+                    rest = [*rest, "--force"]
+                indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
+                fixed = ["dotnet", "new", parts[2], "-n", name, *rest]
+                fixed_lines.append(indent + " ".join(shlex.quote(p) for p in fixed))
+                continue
+        fixed_lines.append(raw_line)
+    return "\\n".join(fixed_lines)
+
+''',
+            False,
+        ),
+        (
+            '''    try:
+        if tool == "bash":
+            proc = await asyncio.create_subprocess_shell(
+                content,
+''',
+            '''    try:
+        if tool == "bash":
+            content, cd_result, workspace = _prepare_bash_content(content, workspace)
+            if cd_result:
+                return cd_result
+            proc = await asyncio.create_subprocess_shell(
+                content,
+''',
+            False,
+        ),
+    ],
+)
+
+patch_file(
     "routes/shell_routes.py",
     [
         (

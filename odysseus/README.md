@@ -241,6 +241,13 @@ a child of `/share/odysseus-workspace`, the wrapper can prepare a clean target
 directory before the scaffold runs. It refuses to auto-clean paths outside the
 workspace or directories containing `.git`.
 
+Version 0.3.21 applies that normalization to the current native Bash execution
+path used by upstream Odysseus, so the Agent no longer bypasses sticky `cd` or
+scaffold hygiene. It also recovers the common .NET CLI shorthand mistake
+`dotnet new <template> <name-or-csproj>` by converting it to
+`dotnet new <template> -n <name> --force` before execution. That recovery is
+generic for .NET project scaffolding and is not tied to MiniTasks.
+
 It also recovers this common malformed tool block:
 
 ````text

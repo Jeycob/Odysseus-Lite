@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.21
+
+- Apply the small-model bash normalization layer to the direct native bash
+  execution path as well as older MCP-style paths. This makes sticky `cd`,
+  guarded scaffold cleanup, and command rewriting effective in current upstream
+  Odysseus builds.
+- Recover the common invalid .NET scaffold shorthand
+  `dotnet new <template> <name-or-csproj>` by translating it to a valid
+  `dotnet new <template> -n <name> --force` command before execution.
+  This is a generic .NET CLI compatibility fix for project scaffolding, not a
+  MiniTasks-specific shortcut.
+
 ## 0.3.20
 
 - Make Agent bash execution more deterministic for small local models by
