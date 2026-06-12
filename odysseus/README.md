@@ -333,6 +333,14 @@ details are still missing from real workspace files, a follow-up summary without
 tool calls is rejected. The model is sent back to executable tools and reminded
 not to use Odysseus documents as project source files.
 
+Version 0.3.31 adds a stronger generic recovery for small models that write
+project source as Markdown instead of using tools. If an action request is
+answered with filename headings plus language code blocks, Odysseus Lite turns
+those snippets into real `write_file` calls under the requested `/share`
+workspace and runs them before the next build/test/smoke command. It also
+tracks `cd` into newly-created workspace directories inside a multi-line Bash
+block, so named scaffold commands do not create accidental nested projects.
+
 It also recovers this common malformed tool block:
 
 ````text

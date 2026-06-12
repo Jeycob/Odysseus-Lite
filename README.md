@@ -113,6 +113,14 @@ routes, endpoints, or implementation details but no real write/edit tool ran,
 the Agent gets another round to edit project files under the workspace and
 verify again.
 
+Odysseus Lite 0.3.31 adds a stronger generic recovery for that same class of
+small-model mistakes. When an action request is answered with filename headings
+plus language code fences, Odysseus Lite converts those snippets into real
+`write_file` calls under `/share/odysseus-workspace` and inserts them before
+build/test/smoke verification. It also tracks `cd` into workspace directories
+that are created earlier in the same Bash block, preventing accidental nested
+scaffolds such as `Project/Project`.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

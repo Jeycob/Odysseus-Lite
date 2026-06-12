@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.31
+
+- Recover another small-model Agent failure mode generically: when a model
+  answers an action request with filename headings plus language code fences
+  instead of real file tools, Odysseus Lite converts those declared source
+  snippets into `write_file` tool calls under the requested `/share` workspace.
+  The recovered writes are inserted before build/test/smoke commands, so
+  verification checks real project files rather than an untouched scaffold.
+- Fix scaffold normalization when a multi-line Bash block creates a workspace
+  directory and then immediately `cd`s into it. The compatibility layer now
+  tracks that future in-workspace directory before it exists on disk, preventing
+  nested duplicate projects such as `Project/Project`.
+- Keep both changes scoped to small-model action/artifact turns. Normal code
+  examples and larger-model Agent runs are not rewritten by this recovery.
+
 ## 0.3.30
 
 - Keep incomplete-verification state across Agent rounds for small models. If a

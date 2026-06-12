@@ -615,6 +615,158 @@ patch_file(
 )
 
 patch_file(
+    "src/agent_loop.py",
+    [
+        (
+            "def _load_mcp_disabled_map() -> Dict[str, set]:\n",
+            "def _odysseus_lite_request_workspace_root(text: str) -> str:\n"
+            "    workspace = os.path.realpath(os.getenv(\"ODYSSEUS_AGENT_WORKDIR\", \"/share/odysseus-workspace\"))\n"
+            "    source = text or \"\"\n"
+            "    for match in re.finditer(r\"(/share/[A-Za-z0-9_./:@{}+\\-]+)\", source):\n"
+            "        raw = match.group(1).rstrip(\".,;:)]\")\n"
+            "        if not raw:\n"
+            "            continue\n"
+            "        candidate = raw\n"
+            "        if os.path.splitext(candidate)[1]:\n"
+            "            candidate = os.path.dirname(candidate)\n"
+            "        candidate = os.path.realpath(candidate)\n"
+            "        try:\n"
+            "            if os.path.commonpath([candidate, workspace]) == workspace:\n"
+            "                return candidate\n"
+            "        except ValueError:\n"
+            "            continue\n"
+            "    return workspace\n\n\n"
+            "def _odysseus_lite_filename_from_heading(prefix: str) -> str:\n"
+            "    filename_re = re.compile(\n"
+            "        r\"(?:`|\\*\\*)?([A-Za-z0-9_./-]+\\.(?:cs|csproj|sln|js|jsx|ts|tsx|py|go|rs|java|kt|php|rb|html|css|json|xml|ya?ml|toml|md|txt|sql|sh))(?:`|\\*\\*)?\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    lines = [line.strip() for line in (prefix or \"\").splitlines() if line.strip()]\n"
+            "    for line in reversed(lines[-5:]):\n"
+            "        lower = line.lower()\n"
+            "        if \"changed files\" in lower or \"final output\" in lower:\n"
+            "            return \"\"\n"
+            "        matches = filename_re.findall(line)\n"
+            "        if matches:\n"
+            "            if len(matches) > 1:\n"
+            "                continue\n"
+            "            return matches[-1]\n"
+            "        if line.startswith(\"#\"):\n"
+            "            return \"\"\n"
+            "    return \"\"\n\n\n"
+            "def _odysseus_lite_recover_declared_file_blocks(text: str, request_text: str, disabled_tools: Optional[set] = None) -> List[ToolBlock]:\n"
+            "    \"\"\"Turn prose file headings plus code fences into real write_file calls.\n\n"
+            "    Small local models sometimes answer an action request with headings like\n"
+            "    `Program.cs` followed by a language code fence, while only executing a\n"
+            "    scaffold/build command. This recovery is intentionally generic: it uses\n"
+            "    filename-looking headings and writes below the requested /share workspace\n"
+            "    root, then the normal tool pipeline verifies the result.\n"
+            "    \"\"\"\n"
+            "    disabled_tools = disabled_tools or set()\n"
+            "    if \"write_file\" in disabled_tools:\n"
+            "        return []\n"
+            "    code_langs = {\n"
+            "        \"csharp\", \"cs\", \"javascript\", \"js\", \"typescript\", \"ts\", \"jsx\", \"tsx\",\n"
+            "        \"python\", \"py\", \"go\", \"rust\", \"rs\", \"java\", \"kt\", \"php\", \"rb\",\n"
+            "        \"html\", \"css\", \"json\", \"yaml\", \"yml\", \"toml\", \"xml\", \"sql\",\n"
+            "        \"dockerfile\", \"text\", \"plaintext\",\n"
+            "    }\n"
+            "    root = _odysseus_lite_request_workspace_root(request_text)\n"
+            "    workspace = os.path.realpath(os.getenv(\"ODYSSEUS_AGENT_WORKDIR\", \"/share/odysseus-workspace\"))\n"
+            "    blocks: List[ToolBlock] = []\n"
+            "    seen: set[str] = set()\n"
+            "    for match in re.finditer(r\"```([^`\\n]*)\\n([\\s\\S]*?)```\", text or \"\"):\n"
+            "        lang = (match.group(1) or \"\").strip().lower()\n"
+            "        if lang in TOOL_TAGS or lang in {\"bash\", \"sh\", \"shell\", \"zsh\", \"dash\", \"ksh\"}:\n"
+            "            continue\n"
+            "        if lang and lang not in code_langs:\n"
+            "            continue\n"
+            "        body = match.group(2).strip(\"\\n\")\n"
+            "        if not body.strip():\n"
+            "            continue\n"
+            "        filename = _odysseus_lite_filename_from_heading((text or \"\")[max(0, match.start() - 600):match.start()])\n"
+            "        if not filename:\n"
+            "            continue\n"
+            "        target = filename if os.path.isabs(filename) else os.path.join(root, filename)\n"
+            "        target = os.path.realpath(target)\n"
+            "        try:\n"
+            "            if os.path.commonpath([target, workspace]) != workspace:\n"
+            "                continue\n"
+            "        except ValueError:\n"
+            "            continue\n"
+            "        if target in seen:\n"
+            "            continue\n"
+            "        seen.add(target)\n"
+            "        blocks.append(ToolBlock(\"write_file\", f\"{target}\\n{body}\"))\n"
+            "    return blocks\n\n\n"
+            "def _odysseus_lite_is_verification_block(block: ToolBlock) -> bool:\n"
+            "    if block.tool_type not in {\"bash\", \"python\"}:\n"
+            "        return False\n"
+            "    return bool(re.search(\n"
+            "        r\"\\b(dotnet\\s+(?:build|test|run|publish)|npm\\s+(?:test|run\\s+(?:build|test|lint|typecheck))|\"\n"
+            "        r\"pnpm\\s+(?:test|run\\s+(?:build|test|lint|typecheck))|yarn\\s+(?:test|build|lint|typecheck)|\"\n"
+            "        r\"pytest|python\\s+-m\\s+pytest|cargo\\s+(?:build|test|check)|go\\s+(?:build|test)|\"\n"
+            "        r\"mvn\\s+test|gradle\\s+test|make\\s+(?:build|test|check)|ruff\\s+check|eslint|tsc\\b|curl\\b|wget\\b)\",\n"
+            "        block.content or \"\",\n"
+            "        re.IGNORECASE,\n"
+            "    ))\n\n\n"
+            "def _odysseus_lite_insert_declared_file_blocks(tool_blocks: List[ToolBlock], file_blocks: List[ToolBlock]) -> List[ToolBlock]:\n"
+            "    if not file_blocks:\n"
+            "        return tool_blocks\n"
+            "    insert_at = len(tool_blocks)\n"
+            "    for idx, block in enumerate(tool_blocks):\n"
+            "        if _odysseus_lite_is_verification_block(block):\n"
+            "            insert_at = idx\n"
+            "            break\n"
+            "    existing = {\n"
+            "        (block.content or \"\").split(\"\\n\", 1)[0].strip()\n"
+            "        for block in tool_blocks\n"
+            "        if block.tool_type == \"write_file\"\n"
+            "    }\n"
+            "    additions = [block for block in file_blocks if (block.content or \"\").split(\"\\n\", 1)[0].strip() not in existing]\n"
+            "    if not additions:\n"
+            "        return tool_blocks\n"
+            "    return tool_blocks[:insert_at] + additions + tool_blocks[insert_at:]\n\n\n"
+            "def _load_mcp_disabled_map() -> Dict[str, set]:\n",
+            False,
+        ),
+        (
+            "        if not tool_blocks and not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n"
+            "            _odysseus_lite_original = _verifier_instruction or \"\"\n"
+            "            _odysseus_lite_combined = f\"{_odysseus_lite_original}\\n{_parse_response}\"\n"
+            "            if (_ODYSSEUS_LITE_ACTION_RE.search(_odysseus_lite_original)\n"
+            "                    and _ODYSSEUS_LITE_ARTIFACT_RE.search(_odysseus_lite_combined)):\n",
+            "        if not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n"
+            "            _odysseus_lite_original = _verifier_instruction or \"\"\n"
+            "            _odysseus_lite_combined = f\"{_odysseus_lite_original}\\n{_parse_response}\"\n"
+            "            _odysseus_lite_action_artifact = (\n"
+            "                _ODYSSEUS_LITE_ACTION_RE.search(_odysseus_lite_original)\n"
+            "                and _ODYSSEUS_LITE_ARTIFACT_RE.search(_odysseus_lite_combined)\n"
+            "            )\n"
+            "            if _odysseus_lite_action_artifact:\n"
+            "                _declared_file_blocks = _odysseus_lite_recover_declared_file_blocks(\n"
+            "                    _parse_response,\n"
+            "                    _odysseus_lite_original,\n"
+            "                    disabled_tools,\n"
+            "                )\n"
+            "                if _declared_file_blocks:\n"
+            "                    logger.info(\n"
+            "                        \"[odysseus-lite] recovered %s declared source file block(s)\",\n"
+            "                        len(_declared_file_blocks),\n"
+            "                    )\n"
+            "                    tool_blocks = _odysseus_lite_insert_declared_file_blocks(tool_blocks, _declared_file_blocks)\n"
+            "                    used_native = False\n"
+            "        if not tool_blocks and not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n"
+            "            _odysseus_lite_original = _verifier_instruction or \"\"\n"
+            "            _odysseus_lite_combined = f\"{_odysseus_lite_original}\\n{_parse_response}\"\n"
+            "            if (_ODYSSEUS_LITE_ACTION_RE.search(_odysseus_lite_original)\n"
+            "                    and _ODYSSEUS_LITE_ARTIFACT_RE.search(_odysseus_lite_combined)):\n",
+            False,
+        ),
+    ],
+)
+
+patch_file(
     "routes/chat_routes.py",
     [
         (
@@ -1338,7 +1490,7 @@ patch_file(
         if parts and parts[0] == "cd" and len(parts) <= 2:
             cd_target = parts[1] if len(parts) == 2 else os.path.expanduser("~")
             resolved = _odysseus_lite_resolve_path(cd_target, current_cwd)
-            if os.path.isdir(resolved):
+            if os.path.isdir(resolved) or _odysseus_lite_path_under(resolved, _AGENT_WORKDIR):
                 current_cwd = resolved
             fixed_lines.append(raw_line)
             continue
@@ -1412,7 +1564,7 @@ def _odysseus_lite_normalize_current_dir_scaffold(content: str, cwd: str) -> str
         if parts and parts[0] == "cd" and len(parts) <= 2:
             cd_target = parts[1] if len(parts) == 2 else os.path.expanduser("~")
             resolved = _odysseus_lite_resolve_path(cd_target, current_cwd)
-            if os.path.isdir(resolved):
+            if os.path.isdir(resolved) or _odysseus_lite_path_under(resolved, _AGENT_WORKDIR):
                 current_cwd = resolved
             fixed_lines.append(raw_line)
             continue
