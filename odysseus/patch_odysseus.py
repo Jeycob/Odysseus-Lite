@@ -688,6 +688,20 @@ def _odysseus_lite_safe_recreate_shell(target: str) -> str:
     )
 
 
+def _odysseus_lite_dotnet_scaffold_target(parts: list[str], cwd: str) -> Optional[str]:
+    if len(parts) < 3 or parts[0] != "dotnet" or parts[1] != "new":
+        return None
+    idx = 3
+    while idx < len(parts):
+        part = parts[idx]
+        if part in ("-o", "--output", "-n", "--name") and idx + 1 < len(parts):
+            return _odysseus_lite_resolve_path(parts[idx + 1], cwd)
+        if part.startswith("--output=") or part.startswith("--name="):
+            return _odysseus_lite_resolve_path(part.split("=", 1)[1], cwd)
+        idx += 1
+    return None
+
+
 def _odysseus_lite_prepare_scaffold_content(content: str, cwd: str) -> str:
     """Make small-model scaffold commands deterministic in the workspace.
 
@@ -719,6 +733,30 @@ def _odysseus_lite_prepare_scaffold_content(content: str, cwd: str) -> str:
             continue
         lines[idx] = _odysseus_lite_safe_recreate_shell(target)
         return "\\n".join(lines)
+
+    current_cwd = cwd
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            parts = shlex.split(line)
+        except ValueError:
+            continue
+        if parts and parts[0] == "cd" and len(parts) <= 2:
+            cd_target = parts[1] if len(parts) == 2 else os.path.expanduser("~")
+            resolved = _odysseus_lite_resolve_path(cd_target, current_cwd)
+            if os.path.isdir(resolved):
+                current_cwd = resolved
+            continue
+        target = _odysseus_lite_dotnet_scaffold_target(parts, current_cwd)
+        if not target:
+            continue
+        if not _odysseus_lite_path_under(target, _AGENT_WORKDIR):
+            continue
+        if _odysseus_lite_realpath(target) == _odysseus_lite_realpath(_AGENT_WORKDIR):
+            continue
+        return _odysseus_lite_safe_recreate_shell(target) + "\\n" + content
 
     if "--force" in content:
         current = _odysseus_lite_realpath(cwd)
@@ -778,6 +816,7 @@ patch_file(
     if not content:
         return content
     content = re.sub(r"(?m)^([ \\t]*)write_file\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
+    content = re.sub(r"(?m)(^|[ \\t])\\.\\\\(?=[^ \\t\\r\\n;&|]+)", r"\\1./", content)
 
     fixed_lines = []
     for raw_line in content.splitlines():
@@ -846,12 +885,9 @@ patch_file(
     """Avoid nested projects when a model already cd'd into the target dir."""
     if not content or not cwd:
         return content
-    cwd_name = pathlib.Path(cwd).name
-    if not cwd_name:
-        return content
-
     fixed_lines = []
     nested_names = set()
+    current_cwd = cwd
     changed = False
     for raw_line in content.splitlines():
         stripped = raw_line.strip()
@@ -872,16 +908,25 @@ patch_file(
                 changed = True
                 continue
 
+        if parts and parts[0] == "cd" and len(parts) <= 2:
+            cd_target = parts[1] if len(parts) == 2 else os.path.expanduser("~")
+            resolved = _odysseus_lite_resolve_path(cd_target, current_cwd)
+            if os.path.isdir(resolved):
+                current_cwd = resolved
+            fixed_lines.append(raw_line)
+            continue
+
         if len(parts) >= 3 and parts[0] == "dotnet" and parts[1] == "new":
             new_parts = parts[:3]
             removed_name = None
+            current_name = pathlib.Path(current_cwd).name
             i = 3
             while i < len(parts):
                 part = parts[i]
                 if part in ("-n", "--name", "-o", "--output") and i + 1 < len(parts):
                     value = parts[i + 1]
-                    if pathlib.Path(value).name == cwd_name:
-                        removed_name = cwd_name
+                    if current_name and pathlib.Path(value).name == current_name:
+                        removed_name = current_name
                         i += 2
                         continue
                     new_parts.extend([part, value])
@@ -889,8 +934,8 @@ patch_file(
                     continue
                 if part.startswith("--name=") or part.startswith("--output="):
                     value = part.split("=", 1)[1]
-                    if pathlib.Path(value).name == cwd_name:
-                        removed_name = cwd_name
+                    if current_name and pathlib.Path(value).name == current_name:
+                        removed_name = current_name
                         i += 1
                         continue
                 new_parts.append(part)
@@ -917,9 +962,8 @@ def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tupl
             '''    content = _odysseus_lite_prepare_scaffold_content(content, base_cwd)
     last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
 ''',
-            '''    scaffold_cwd = _odysseus_lite_last_cd_target(content, base_cwd) or base_cwd
-    content = _odysseus_lite_normalize_current_dir_scaffold(content, scaffold_cwd)
-    content = _odysseus_lite_prepare_scaffold_content(content, scaffold_cwd)
+            '''    content = _odysseus_lite_normalize_current_dir_scaffold(content, base_cwd)
+    content = _odysseus_lite_prepare_scaffold_content(content, base_cwd)
     last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
 ''',
             False,

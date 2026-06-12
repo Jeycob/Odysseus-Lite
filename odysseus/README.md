@@ -255,6 +255,12 @@ rewritten to scaffold in the current directory. A redundant following
 `cd <current-directory>` is skipped, and guarded cleanup is based on the
 effective directory from the multi-line Bash block.
 
+Version 0.3.23 makes the scaffold correction order-aware. Valid root-scaffold
+commands such as `dotnet new webapi -n Project` are left intact when the model
+has not changed into `Project` yet, while named workspace targets are still
+cleaned before recreate-style scaffolds. It also normalizes Windows-style bash
+paths like `.\Project.csproj` to `./Project.csproj`.
+
 It also recovers this common malformed tool block:
 
 ````text

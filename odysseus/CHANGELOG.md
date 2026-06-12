@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.23
+
+- Fix the 0.3.22 scaffold normalization so it tracks `cd` commands in order
+  instead of looking at a later directory change. This preserves the valid
+  pattern `dotnet new <template> -n <project>` from a workspace root while
+  still correcting nested scaffolds after the model has already changed into
+  the target directory.
+- Clean the intended `dotnet new -n/--name/-o/--output` target directory under
+  the persistent workspace before recreate-style scaffolds.
+- Normalize Windows-style bash path fragments like `.\Project.csproj` to
+  `./Project.csproj` before execution.
+
 ## 0.3.22
 
 - Normalize another small-model scaffold loop: when a model has already moved

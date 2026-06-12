@@ -101,6 +101,12 @@ current directory instead of nesting a duplicate project. The cleanup guard now
 uses the effective directory from multi-line bash blocks, not only the initial
 shell directory.
 
+Odysseus Lite 0.3.23 makes that normalization order-aware, so valid
+root-scaffold commands such as `dotnet new webapi -n Project` are preserved
+when the following `cd Project` has not happened yet. It also cleans named
+workspace scaffold targets and normalizes Windows-style bash paths like
+`.\Project.csproj` to `./Project.csproj`.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance
