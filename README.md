@@ -30,25 +30,16 @@ Runtime-installed user tools live under:
 /share/odysseus-tools
 ```
 
-For .NET projects, use Agent mode and ask Odysseus to run:
-
-```bash
-install-dotnet-sdk
-dotnet new web -o MiniTasks
-```
-
-The helper installs .NET into persistent `/share` storage.
-
-Odysseus Lite 0.3.6 also injects those workspace/tooling rules into the Agent
-system prompt automatically, including the instruction to use
-`install-dotnet-sdk --channel 9.0` instead of `apt-get install dotnet-sdk-*`.
+Odysseus Lite injects those workspace/tooling rules into the Agent system
+prompt automatically. Project files should be created under
+`/share/odysseus-workspace`; durable runtime-installed tools should go under
+`/share/odysseus-tools`.
 
 Odysseus Lite 0.3.7 also tells the agent that Bash tool calls are stateless.
 Use absolute paths or combine `cd` and the command in one call:
 
 ```bash
-cd /share/odysseus-workspace/MiniTasks && dotnet run
-dotnet run --project /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
+cd /share/odysseus-workspace/project && npm test
 ```
 
 Odysseus Lite 0.3.8 additionally makes standalone `cd <dir>` Bash calls sticky
@@ -65,19 +56,11 @@ Odysseus Lite 0.3.11 makes the login page safer in Home Assistant mobile
 Ingress: stale or uncertain auth status falls back to Sign In instead of
 incorrectly showing first-time setup.
 
-Odysseus Lite 0.3.12 tightens the Agent instructions for small local coding
-models. It tells the Agent to write source code into real project files, choose
-web templates for ASP.NET Core web app requests, and stop after a successful
-build or smoke test instead of repeating troubleshooting text.
-
-Odysseus Lite 0.3.13 adds a guard for false coding-task completions. If a
-small local model claims that files were created or a build passed without any
-tool execution, the add-on nudges it to run real `bash`/file tools instead of
-accepting the answer as done.
-
-Odysseus Lite 0.3.14 recovers a common 3B-model formatting mistake where the
-model writes `bash` as the first line inside an untagged code block instead of
-using an executable `bash` fence.
+Odysseus Lite 0.3.15 keeps general Agent environment rules separate from
+small-model compatibility rules. Extra recovery for malformed tool fences and
+false "created/built/changed" completions applies only when the selected model
+name looks like a small local model, with the threshold controlled by the
+`small_model_max_parameters_b` add-on option.
 
 ## Smoke Test A Running Instance
 

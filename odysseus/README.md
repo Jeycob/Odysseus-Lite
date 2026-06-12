@@ -153,68 +153,81 @@ admin agent can still install additional system packages with `apt-get`, but
 packages installed into the container layer can disappear after an add-on
 rebuild/update. Keep projects and user tools in `/share`.
 
-For .NET development, ask the agent to run:
+Some SDKs are better installed as user-level tools under `/share` instead of
+through the OS package manager. The add-on includes this helper for .NET:
 
 ```bash
-install-dotnet-sdk
-dotnet --info
-dotnet new web -o MiniTasks
+install-dotnet-sdk --channel 9.0
 ```
 
 `install-dotnet-sdk` installs .NET into `/share/odysseus-tools/dotnet`, so it
 survives add-on rebuilds.
 
 Agent Bash commands run in separate shell sessions. A command such as
-`cd MiniTasks` in one tool call does not affect the next tool call. Ask the
+`cd project` in one tool call does not affect the next tool call. Ask the
 agent to use absolute paths or combine the directory change with the command:
 
 ```bash
-cd /share/odysseus-workspace/MiniTasks && dotnet run
-dotnet run --project /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
+cd /share/odysseus-workspace/project && npm test
 ```
 
 Version 0.3.8 also makes standalone `cd <dir>` Bash calls sticky for following
 Bash calls in the same running add-on process. This helps small local models
-that split `cd MiniTasks` and `dotnet run` into separate tool calls.
+that split navigation and execution into separate tool calls.
 
-For coding tasks, the Agent should create real source files under
-`/share/odysseus-workspace`, not detached Odysseus document/code panels. Version
-0.3.12 adds that rule to the automatic Agent prompt and also tells the Agent to
-stop once a build or smoke test succeeds. This matters most for small local
-models such as 3B/7B coders, which can otherwise keep repeating the same
-troubleshooting checklist after the tool output already shows success.
+For project work, the Agent should create real files under
+`/share/odysseus-workspace`, not detached Odysseus document/code panels.
 
-Version 0.3.13 also guards the opposite failure mode: a small model claiming
-that files were changed or a build passed even though no tool ran. When that
-happens during a coding task, Odysseus sends the model a retry instruction to
-use real `bash`, `write_file`, or `edit_file` tool blocks.
+## Small Model Agent Compatibility
 
-Version 0.3.14 also recovers this common malformed tool block:
+Small local models can struggle with Agent mode: they may put `bash` inside a
+plain code block, claim files were changed without running a tool, or repeat a
+generic checklist after a command already succeeded.
+
+Version 0.3.15 keeps those workarounds scoped to small models. They are enabled
+only when the selected model name contains a parameter size at or below:
+
+```text
+small_model_max_parameters_b: 8
+```
+
+You can disable the behavior entirely with:
+
+```text
+small_model_agent_workarounds: false
+```
+
+When active, the compatibility layer is generic. It is not tied to any
+language, sample app, or framework. It applies to action requests involving
+project files, dependencies, builds, tests, linting, typechecking, package
+managers, or source directories.
+
+It also recovers this common malformed tool block:
 
 ````text
 ```
 bash
-dotnet build /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
+npm test
 ```
 ````
 
-For coding/action requests, Odysseus Lite treats it like the executable form:
+For action requests, Odysseus Lite treats it like the executable form:
 
 ````text
 ```bash
-dotnet build /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
+npm test
 ```
 ````
 
-For an ASP.NET Core web app, prefer a prompt like:
+Useful prompt for small local models:
 
 ```text
-Create an ASP.NET Core minimal API named MiniTasks.
-Use write_file/edit_file for project files. Do not use create_document.
-Use dotnet new web or webapi, not console.
-Create it in /share/odysseus-workspace/MiniTasks.
-Run dotnet build /share/odysseus-workspace/MiniTasks/MiniTasks.csproj.
-Stop after the build succeeds and summarize only the changed files.
+Use Agent mode.
+Work in /share/odysseus-workspace/<project-name>.
+Create or edit real files. Do not use create_document for project files.
+Install missing tools yourself, preferably under /share/odysseus-tools.
+Run the relevant build/test/lint/smoke command.
+Stop after verification succeeds and summarize only changed files.
 ```
 
 For setup that should replay on every add-on start, create:
@@ -233,15 +246,13 @@ You are inside the Odysseus Lite Home Assistant add-on.
 Use Agent mode. Do not give instructions unless blocked.
 Work in /share/odysseus-workspace.
 Install missing tools yourself. Prefer persistent installs under /share/odysseus-tools.
-If .NET is missing, run install-dotnet-sdk.
 Create the project files directly and then run a smoke test.
 For Bash commands, use absolute paths or combine cd and the command in one call.
 ```
 
 Version 0.3.6 injects this environment knowledge into the Agent system prompt
 automatically. You should no longer need to repeat the workspace/tooling rules
-in every chat. For stubborn small local models, a short direct request still
-helps:
+in every chat. For stubborn small local models, a short direct request still helps:
 
 ```text
 Create the app now in /share/odysseus-workspace and verify it builds.

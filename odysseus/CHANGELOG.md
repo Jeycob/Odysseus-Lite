@@ -1,30 +1,45 @@
 # Changelog
 
+## 0.3.15
+
+- Harden first-login behavior in Home Assistant Ingress/mobile WebViews:
+  `/login` starts in a disabled status-checking state, `/api/auth/status` is
+  served with no-cache headers, and the client verifies that the login cookie is
+  visible before redirecting.
+- Split Odysseus Lite Agent guidance into general environment rules and
+  small-model compatibility rules.
+- Apply malformed tool-fence recovery and false-completion nudges only when the
+  selected model name looks like a small local model. The threshold is
+  configurable with `small_model_max_parameters_b`.
+- Generalize small-model guidance for any language/framework/project, not just
+  .NET or a specific sample app.
+
 ## 0.3.14
 
 - Recover a common small-model tool formatting mistake where the model writes
   an untagged code fence whose first line is `bash`, `write_file`, or another
   tool name. Odysseus Lite now converts that into a real executable tool block
-  for coding/action requests.
+  for action requests.
 - Make the Agent prompt stricter about putting `bash` in the code-fence tag,
   not as the first line inside a generic code block.
 
 ## 0.3.13
 
-- Add a false-completion guard for coding tasks: if a small local model claims
-  files were created or a build passed without any tool execution, Odysseus
-  nudges it to run real `bash`/file tools instead of accepting the answer.
+- Add a false-completion guard for action requests: if a small local model
+  claims files were created or verification passed without any tool execution,
+  Odysseus nudges it to run real `bash`/file tools instead of accepting the
+  answer.
 - Add exact fenced tool-call syntax to the Odysseus Lite Agent prompt.
 - Tell the Agent not to claim "Changed files", "Created", or "Built" unless
   the current turn contains a successful tool result.
 
 ## 0.3.12
 
-- Tighten the Agent system prompt for small local coding models.
+- Tighten the Agent system prompt for small local models in Agent mode.
 - Tell the Agent to write real project files with file tools instead of
   creating detached code/document panels.
-- Tell the Agent to choose web templates for ASP.NET Core web app requests
-  instead of falling back to console apps.
+- Tell the Agent to match the requested language, framework, and project type
+  instead of falling back to an unrelated template.
 - Tell the Agent to stop after a successful build or smoke test instead of
   repeating troubleshooting steps.
 
@@ -53,7 +68,7 @@
 - Make the native Bash agent tool remember a successful standalone `cd <dir>`
   command and run later Bash commands from that directory.
 - This makes small local models more forgiving when they split `cd project`
-  and `dotnet run` into separate tool calls.
+  and a later build/run command into separate tool calls.
 
 ## 0.3.7
 
@@ -61,7 +76,8 @@
   between separate tool executions.
 - Teach the agent to use absolute project paths or combine `cd ... && command`
   in a single Bash tool call.
-- Document the preferred `.NET` run command with `dotnet run --project`.
+- Document that project commands should use explicit paths when the toolchain
+  supports them.
 
 ## 0.3.6
 

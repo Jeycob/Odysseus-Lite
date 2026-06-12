@@ -63,6 +63,12 @@ except (TypeError, ValueError):
 emit("ODYSSEUS_CHAT_UPLOAD_MAX_BYTES", max(upload_mb, 1) * 1024 * 1024)
 emit("ODYSSEUS_AGENT_WORKDIR", options.get("workspace_dir", "/share/odysseus-workspace"))
 emit("ODYSSEUS_TOOLS_DIR", options.get("tools_dir", "/share/odysseus-tools"))
+emit("ODYSSEUS_SMALL_MODEL_AGENT_WORKAROUNDS", "true" if options.get("small_model_agent_workarounds", True) else "false")
+try:
+    small_model_max_b = int(options.get("small_model_max_parameters_b", 8))
+except (TypeError, ValueError):
+    small_model_max_b = 8
+emit("ODYSSEUS_SMALL_MODEL_MAX_PARAMETERS_B", max(small_model_max_b, 1))
 emit("ODYSSEUS_RUN_WORKSPACE_BOOTSTRAP", "true" if options.get("run_workspace_bootstrap", False) else "false")
 emit("ODYSSEUS_WORKSPACE_BOOTSTRAP_SCRIPT", options.get("workspace_bootstrap_script", "/share/odysseus-workspace/bootstrap.sh"))
 PY
@@ -93,20 +99,13 @@ if [ -z "${ODYSSEUS_AGENT_SYSTEM_HINT:-}" ]; then
 - The persistent user tools directory is ${ODYSSEUS_TOOLS_DIR}. Prefer installing SDKs and user-level tools there so they survive add-on rebuilds.
 - Do not create user projects under /opt/odysseus, /root, /tmp, or /data unless specifically asked. Those are app/runtime locations, not the user's project workspace.
 - The container normally runs as root. Do not use sudo.
-- Bash tool calls are stateless: a cd in one tool call does not carry over to the next tool call. Use absolute paths, or put the directory change and command in the same tool call, for example: cd ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks && dotnet run.
-- When running project commands, prefer explicit project paths such as dotnet run --project ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks/MiniTasks.csproj instead of assuming the shell is still in a previous directory.
+- Bash tool calls are separate shell sessions. Use absolute paths, or put the directory change and command in the same tool call, for example: cd ${ODYSSEUS_AGENT_WORKDIR}/project && npm test.
+- When running project commands, prefer explicit project or file paths instead of assuming the shell is still in a previous directory.
 - For action requests such as "create an app", "generate files", "install what is needed", or "fix this", use tools and do the work. Do not provide a tutorial unless blocked.
-- To execute shell commands, output only an executable fenced tool block tagged bash, for example:
-  \`\`\`bash
-  dotnet build ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks/MiniTasks.csproj
-  \`\`\`
-- The word bash must be in the opening fence tag. Do not write an untagged code block whose first line is bash.
-- To create a file, output an executable fenced tool block tagged write_file. The first line is the path and the rest is file content.
 - For project source code, use file tools such as write_file and edit_file to create or update real files under ${ODYSSEUS_AGENT_WORKDIR}. Do not use create_document or detached code/document panels for project files.
-- Match the requested project type. If the user asks for an ASP.NET Core web app or API, create a web project with dotnet new web, webapi, mvc, or razor; do not create a console app unless the user asks for a console app.
-- Prefer non-interactive verification. For web apps, run dotnet build against the .csproj and, if useful, start the app in the background and curl a local endpoint. Do not use an interactive console app as proof for a web app request.
+- Match the requested language, framework, and project type. Do not substitute an unrelated template or app type unless the user asks for it.
+- Prefer non-interactive verification such as build, test, lint, typecheck, or a local smoke request.
 - When a build, test, or smoke command succeeds, stop the task and summarize the files changed and the command that passed. Do not repeat the same troubleshooting checklist after success.
-- Never say "Changed files", "Created", "Updated", "Built", or "Build succeeded" unless the current turn contains a successful tool result proving it.
 - Node.js and npm are already installed. For Node apps, run npm commands inside a project directory under ${ODYSSEUS_AGENT_WORKDIR}.
 - For .NET, do not use apt-get install dotnet-sdk-* or Microsoft apt repositories. Use the helper: install-dotnet-sdk --channel 9.0. Then run dotnet commands from the project directory.
 - If apt is broken by /etc/apt/sources.list.d/dotnet.list, remove that file before any future apt-get command: rm -f /etc/apt/sources.list.d/dotnet.list.
@@ -115,6 +114,21 @@ if [ -z "${ODYSSEUS_AGENT_SYSTEM_HINT:-}" ]; then
 EOF
 )"
   export ODYSSEUS_AGENT_SYSTEM_HINT
+fi
+
+if [ -z "${ODYSSEUS_SMALL_MODEL_AGENT_HINT:-}" ]; then
+  ODYSSEUS_SMALL_MODEL_AGENT_HINT="$(cat <<EOF
+## Small Local Model Agent Compatibility
+- These extra guardrails are active only when Odysseus Lite detects a small local model by parameter count.
+- If the user asks you to create, modify, install, run, build, test, or fix something, your next response should contain executable tool blocks before any summary.
+- Shell commands must use an opening fence tag like \`\`\`bash. Do not write an untagged code block whose first line is bash.
+- For file changes, use write_file or edit_file for real files under ${ODYSSEUS_AGENT_WORKDIR}, or use shell commands that write there. Do not use create_document for project source files.
+- Never say "Changed files", "Created", "Updated", "Built", "Installed", "Fixed", or "Tests passed" unless the current turn contains a successful tool result proving it.
+- If a tool fails, read the error, run one concrete diagnostic or fix, and try again. Do not repeat a generic checklist.
+- Stop after the requested artifact exists and the relevant build, test, lint, or smoke check passes.
+EOF
+)"
+  export ODYSSEUS_SMALL_MODEL_AGENT_HINT
 fi
 
 if [ ! -f "${ODYSSEUS_AGENT_WORKDIR}/README.md" ]; then

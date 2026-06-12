@@ -1,6 +1,6 @@
 name: "Odysseus Lite"
 description: "Experimental Home Assistant add-on for the Odysseus self-hosted AI workspace."
-version: "0.3.14"
+version: "0.3.15"
 slug: "odysseus_lite"
 url: "https://github.com/pewdiepie-archdaemon/odysseus"
 arch:
@@ -40,6 +40,8 @@ options:
   llm_stream_timeout_seconds: 600
   workspace_dir: "/share/odysseus-workspace"
   tools_dir: "/share/odysseus-tools"
+  small_model_agent_workarounds: true
+  small_model_max_parameters_b: 8
   run_workspace_bootstrap: false
   workspace_bootstrap_script: "/share/odysseus-workspace/bootstrap.sh"
 schema:
@@ -63,5 +65,7 @@ schema:
   llm_stream_timeout_seconds: "int(60,3600)"
   workspace_dir: str
   tools_dir: str
+  small_model_agent_workarounds: bool
+  small_model_max_parameters_b: "int(1,70)"
   run_workspace_bootstrap: bool
   workspace_bootstrap_script: str
