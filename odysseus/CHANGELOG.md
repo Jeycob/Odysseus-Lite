@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.18
+
+- For small-model Agent runs, protect tool parsing from nested markdown fences
+  inside shell/python tool blocks. README examples such as `echo "```bash"`
+  no longer truncate the executable block and produce half-run shell commands.
+- Coerce `use_web=false` form values correctly so API clients and tests do not
+  accidentally trigger web search context.
+- Add a small-model prompt guard to prefer heredoc/printf/tildes for README
+  examples inside shell tools. This is a generic tool-parsing safety fix, not
+  tied to .NET, MiniTasks, or any one project template.
+
 ## 0.3.17
 
 - Stop executing any remaining tool blocks in the same small-model Agent round

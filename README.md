@@ -71,6 +71,11 @@ several tool blocks in one round, Odysseus stops executing the remaining blocks
 immediately after the first successful verification command. This is generic
 for project work and is not tied to .NET or any particular sample app.
 
+Odysseus Lite 0.3.18 hardens small-model tool parsing when a shell/python tool
+block contains markdown examples for generated docs. Nested triple-backtick
+examples are neutralized before parsing so the executable block is not cut
+short. It also fixes `use_web=false` form handling for API clients.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

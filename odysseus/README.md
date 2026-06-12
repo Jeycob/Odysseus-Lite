@@ -214,6 +214,12 @@ for small models that emit a good build/test command and then append stale
 diagnostics in the same response. The guard is generic: it applies to project
 verification commands across stacks, not just .NET or a specific sample app.
 
+Version 0.3.18 protects small-model tool parsing when generated documentation
+examples contain nested triple-backtick fences inside a shell/python tool
+block. Those inner fences are neutralized before execution, so the Agent does
+not run a truncated command. It also correctly treats `use_web=false` form
+values as false for API clients.
+
 It also recovers this common malformed tool block:
 
 ````text

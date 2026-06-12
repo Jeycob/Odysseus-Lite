@@ -211,15 +211,54 @@ patch_file(
             False,
         ),
         (
+            "def _odysseus_lite_recover_prefixed_tool_blocks(text: str, disabled_tools: Optional[set] = None) -> List[ToolBlock]:\n",
+            "def _odysseus_lite_escape_nested_tool_fences(text: str) -> str:\n"
+            "    \"\"\"Keep markdown examples inside tool blocks from ending the tool early.\n\n"
+            "    Small models often write README examples like echo \"```bash\" inside a\n"
+            "    ```bash tool block. The stock non-greedy fenced-block regex then stops\n"
+            "    at that inner fence and executes a truncated shell script. Treat the\n"
+            "    standalone line fence as the real close marker and neutralize inner\n"
+            "    triple-backtick sequences to markdown-compatible tildes.\n"
+            "    \"\"\"\n"
+            "    if not text or \"```\" not in text:\n"
+            "        return text or \"\"\n"
+            "    tags = \"|\".join(sorted(re.escape(t) for t in TOOL_TAGS))\n"
+            "    opener = re.compile(r\"```(\" + tags + r\")\\s*\\n\", re.IGNORECASE)\n"
+            "    out = []\n"
+            "    pos = 0\n"
+            "    while True:\n"
+            "        match = opener.search(text, pos)\n"
+            "        if not match:\n"
+            "            out.append(text[pos:])\n"
+            "            break\n"
+            "        out.append(text[pos:match.end()])\n"
+            "        body_start = match.end()\n"
+            "        close = re.search(r\"(?m)^[ \\t]*```\\s*$\", text[body_start:])\n"
+            "        if not close:\n"
+            "            out.append(text[body_start:])\n"
+            "            break\n"
+            "        body_end = body_start + close.start()\n"
+            "        close_end = body_start + close.end()\n"
+            "        out.append(text[body_start:body_end].replace(\"```\", \"~~~\"))\n"
+            "        out.append(text[body_end:close_end])\n"
+            "        pos = close_end\n"
+            "    return \"\".join(out)\n\n\n"
+            "def _odysseus_lite_recover_prefixed_tool_blocks(text: str, disabled_tools: Optional[set] = None) -> List[ToolBlock]:\n",
+            False,
+        ),
+        (
             "        tool_blocks, used_native = _resolve_tool_blocks(round_response, native_tool_calls, round_num, is_api_model=_is_api_model)\n\n"
             "        # Force-answer round: we told the model to STOP calling tools and\n",
-            "        tool_blocks, used_native = _resolve_tool_blocks(round_response, native_tool_calls, round_num, is_api_model=_is_api_model)\n"
+            "        _parse_response = round_response\n"
+            "        if not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n"
+            "            _parse_response = _odysseus_lite_escape_nested_tool_fences(round_response)\n"
+            "        tool_blocks, used_native = _resolve_tool_blocks(_parse_response, native_tool_calls, round_num, is_api_model=_is_api_model)\n"
             "        if not tool_blocks and not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n"
             "            _odysseus_lite_original = _verifier_instruction or \"\"\n"
-            "            _odysseus_lite_combined = f\"{_odysseus_lite_original}\\n{round_response}\"\n"
+            "            _odysseus_lite_combined = f\"{_odysseus_lite_original}\\n{_parse_response}\"\n"
             "            if (_ODYSSEUS_LITE_ACTION_RE.search(_odysseus_lite_original)\n"
             "                    and _ODYSSEUS_LITE_ARTIFACT_RE.search(_odysseus_lite_combined)):\n"
-            "                _recovered_blocks = _odysseus_lite_recover_prefixed_tool_blocks(round_response, disabled_tools)\n"
+            "                _recovered_blocks = _odysseus_lite_recover_prefixed_tool_blocks(_parse_response, disabled_tools)\n"
             "                if _recovered_blocks:\n"
             "                    logger.info(\n"
             "                        \"[odysseus-lite] recovered %s prefixed fenced tool block(s)\",\n"
@@ -229,6 +268,16 @@ patch_file(
             "                    used_native = False\n\n"
             "        # Force-answer round: we told the model to STOP calling tools and\n",
             False,
+        ),
+    ],
+)
+
+patch_file(
+    "routes/chat_routes.py",
+    [
+        (
+            "        use_web = form_data.get(\"use_web\")\n",
+            "        use_web = str(form_data.get(\"use_web\", \"\")).lower() == \"true\"\n",
         ),
     ],
 )

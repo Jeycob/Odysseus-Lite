@@ -122,6 +122,7 @@ if [ -z "${ODYSSEUS_SMALL_MODEL_AGENT_HINT:-}" ]; then
 - These extra guardrails are active only when Odysseus Lite detects a small local model by parameter count.
 - If the user asks you to create, modify, install, run, build, test, or fix something, your next response should contain executable tool blocks before any summary.
 - Shell commands must use an opening fence tag like \`\`\`bash. Do not write an untagged code block whose first line is bash.
+- Inside a bash/python tool block, do not include nested triple-backtick markdown fences. When writing README code examples, prefer a quoted heredoc, printf, or markdown tildes (~~~) so the tool block is not cut short.
 - For file changes, use write_file or edit_file for real files under ${ODYSSEUS_AGENT_WORKDIR}, or use shell commands that write there. Do not use create_document for project source files.
 - Never say "Changed files", "Created", "Updated", "Built", "Installed", "Fixed", or "Tests passed" unless the current turn contains a successful tool result proving it.
 - If a tool result says a build, test, lint, typecheck, or smoke check succeeded, stop and summarize. Do not run more diagnostics, reinstall tools, or retry with sudo.
