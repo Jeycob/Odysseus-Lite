@@ -201,6 +201,79 @@ patch_file(
 )
 
 patch_file(
+    "static/login.html",
+    [
+        (
+            "  // Check auth status\n"
+            "  try {\n"
+            "    const res = await fetch('/api/auth/status', { credentials: 'same-origin' });\n"
+            "    const data = await res.json();\n"
+            "    if (data.authenticated) {\n"
+            "      window.location.replace('/');\n"
+            "      return;\n"
+            "    }\n"
+            "    signupAllowed = !!data.signup_enabled;\n"
+            "    if (!data.configured) {\n"
+            "      setMode('setup');\n"
+            "    } else {\n"
+            "      setMode('login');\n"
+            "    }\n"
+            "  } catch (e) {\n"
+            "    setMode('login');\n"
+            "  }\n",
+            "  // Check auth status. Be conservative: only show first-run setup when\n"
+            "  // the backend explicitly says configured === false. Mobile WebViews\n"
+            "  // and Home Assistant Ingress can serve stale pages or cached responses;\n"
+            "  // an uncertain status must fall back to normal login, never setup.\n"
+            "  try {\n"
+            "    const statusUrl = '/api/auth/status?_=' + Date.now();\n"
+            "    const res = await fetch(statusUrl, {\n"
+            "      credentials: 'same-origin',\n"
+            "      cache: 'no-store',\n"
+            "      headers: { 'Accept': 'application/json' }\n"
+            "    });\n"
+            "    if (!res.ok) throw new Error('status failed');\n"
+            "    const data = await res.json();\n"
+            "    if (!data || typeof data.configured !== 'boolean') throw new Error('bad status');\n"
+            "    if (data.authenticated) {\n"
+            "      window.location.replace('/');\n"
+            "      return;\n"
+            "    }\n"
+            "    signupAllowed = !!data.signup_enabled;\n"
+            "    if (data.configured === false) {\n"
+            "      setMode('setup');\n"
+            "    } else {\n"
+            "      setMode('login');\n"
+            "    }\n"
+            "  } catch (e) {\n"
+            "    setMode('login');\n"
+            "  }\n",
+        ),
+    ],
+)
+
+patch_file(
+    "app.py",
+    [
+        (
+            "@app.get(\"/login\")\n"
+            "async def serve_login(request: Request):\n"
+            "    if not AUTH_ENABLED:\n"
+            "        return RedirectResponse(url=\"/\", status_code=302)\n"
+            "    return _serve_html_with_nonce(request, abs_join(BASE_DIR, \"static/login.html\"))\n",
+            "@app.get(\"/login\")\n"
+            "async def serve_login(request: Request):\n"
+            "    if not AUTH_ENABLED:\n"
+            "        return RedirectResponse(url=\"/\", status_code=302)\n"
+            "    response = _serve_html_with_nonce(request, abs_join(BASE_DIR, \"static/login.html\"))\n"
+            "    response.headers[\"Cache-Control\"] = \"no-store, max-age=0\"\n"
+            "    return response\n",
+            False,
+        ),
+    ],
+)
+
+patch_file(
     "static/js/admin.js",
     [
         (

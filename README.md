@@ -61,6 +61,10 @@ Odysseus source layouts used by Home Assistant Docker builds.
 Odysseus Lite 0.3.10 makes that compatibility patch tolerant of minor
 `tool_execution.py` differences in cached Home Assistant Docker builds.
 
+Odysseus Lite 0.3.11 makes the login page safer in Home Assistant mobile
+Ingress: stale or uncertain auth status falls back to Sign In instead of
+incorrectly showing first-time setup.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

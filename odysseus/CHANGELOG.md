@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.11
+
+- Make the login page conservative about first-run setup: show setup only when
+  `/api/auth/status` explicitly returns `configured: false`.
+- Fetch auth status with `cache: no-store` and a cache buster to avoid stale
+  Home Assistant mobile WebView/Ingress state.
+- Serve `/login` with `Cache-Control: no-store` when the upstream layout
+  supports that patch.
+
 ## 0.3.10
 
 - Make the sticky Bash working-directory patch tolerate upstream
