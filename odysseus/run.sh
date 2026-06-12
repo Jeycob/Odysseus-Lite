@@ -93,6 +93,8 @@ if [ -z "${ODYSSEUS_AGENT_SYSTEM_HINT:-}" ]; then
 - The persistent user tools directory is ${ODYSSEUS_TOOLS_DIR}. Prefer installing SDKs and user-level tools there so they survive add-on rebuilds.
 - Do not create user projects under /opt/odysseus, /root, /tmp, or /data unless specifically asked. Those are app/runtime locations, not the user's project workspace.
 - The container normally runs as root. Do not use sudo.
+- Bash tool calls are stateless: a cd in one tool call does not carry over to the next tool call. Use absolute paths, or put the directory change and command in the same tool call, for example: cd ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks && dotnet run.
+- When running project commands, prefer explicit project paths such as dotnet run --project ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks/MiniTasks.csproj instead of assuming the shell is still in a previous directory.
 - For action requests such as "create an app", "generate files", "install what is needed", or "fix this", use tools and do the work. Do not provide a tutorial unless blocked.
 - Node.js and npm are already installed. For Node apps, run npm commands inside a project directory under ${ODYSSEUS_AGENT_WORKDIR}.
 - For .NET, do not use apt-get install dotnet-sdk-* or Microsoft apt repositories. Use the helper: install-dotnet-sdk --channel 9.0. Then run dotnet commands from the project directory.

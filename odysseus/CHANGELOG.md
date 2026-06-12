@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.7
+
+- Tell the agent that Bash tool calls are stateless and `cd` does not persist
+  between separate tool executions.
+- Teach the agent to use absolute project paths or combine `cd ... && command`
+  in a single Bash tool call.
+- Document the preferred `.NET` run command with `dotnet run --project`.
+
 ## 0.3.6
 
 - Inject an Odysseus Lite environment guide into every Agent system prompt.

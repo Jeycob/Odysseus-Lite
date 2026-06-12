@@ -164,6 +164,15 @@ dotnet new web -o MiniTasks
 `install-dotnet-sdk` installs .NET into `/share/odysseus-tools/dotnet`, so it
 survives add-on rebuilds.
 
+Agent Bash commands run in separate shell sessions. A command such as
+`cd MiniTasks` in one tool call does not affect the next tool call. Ask the
+agent to use absolute paths or combine the directory change with the command:
+
+```bash
+cd /share/odysseus-workspace/MiniTasks && dotnet run
+dotnet run --project /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
+```
+
 For setup that should replay on every add-on start, create:
 
 ```text
@@ -182,6 +191,7 @@ Work in /share/odysseus-workspace.
 Install missing tools yourself. Prefer persistent installs under /share/odysseus-tools.
 If .NET is missing, run install-dotnet-sdk.
 Create the project files directly and then run a smoke test.
+For Bash commands, use absolute paths or combine cd and the command in one call.
 ```
 
 Version 0.3.6 injects this environment knowledge into the Agent system prompt
