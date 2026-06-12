@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.20
+
+- Make Agent bash execution more deterministic for small local models by
+  remembering simple `cd` commands that appear inside larger shell blocks, not
+  only standalone `cd` tool calls.
+- Add a generic guarded scaffold hygiene layer for project creation commands
+  such as `dotnet new`, `npm create`, `cargo new`, and similar tools. When a
+  small model scaffolds a project under the persistent workspace, Odysseus Lite
+  can prepare a clean target directory while refusing to auto-clean directories
+  outside the workspace or directories containing `.git`.
+- Document the recreate-project behavior generally, without tying it to .NET,
+  MiniTasks, or a specific framework.
+
 ## 0.3.19
 
 - Make small-model tool parsing heredoc-aware. Markdown examples inside a

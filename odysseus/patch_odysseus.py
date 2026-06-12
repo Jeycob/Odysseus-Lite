@@ -548,6 +548,220 @@ patch_file(
 )
 
 patch_file(
+    "src/tool_execution.py",
+    [
+        (
+            '''def _bash_cd_only_target(content: str, cwd: str) -> Optional[str]:
+    """Return the target directory for a standalone `cd` command."""
+    lines = [line.strip() for line in content.splitlines() if line.strip() and not line.strip().startswith('#')]
+    if len(lines) != 1:
+        return None
+    try:
+        parts = shlex.split(lines[0])
+    except ValueError:
+        return None
+    if not parts or parts[0] != 'cd' or len(parts) > 2:
+        return None
+    target = parts[1] if len(parts) == 2 else os.path.expanduser('~')
+    path = pathlib.Path(target).expanduser()
+    if not path.is_absolute():
+        path = pathlib.Path(cwd) / path
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError:
+        return None
+    return str(resolved) if resolved.is_dir() else None
+
+def _translate_bash_pseudo_tools(content: str) -> str:
+    """Recover common pseudo tool calls that small models put in Bash."""
+    if not content:
+        return content
+    content = re.sub(r"(?m)^([ \\t]*)write_file\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
+    return content
+
+def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tuple[str, Optional[Dict], str]:
+    """Make separate `cd` and later command tool calls behave like a shell."""
+    global _AGENT_SHELL_CWD
+    content = _translate_bash_pseudo_tools(content)
+    base_cwd = _AGENT_SHELL_CWD or workspace or _AGENT_WORKDIR
+    if not os.path.isdir(base_cwd):
+        base_cwd = workspace or _AGENT_WORKDIR
+    cd_target = _bash_cd_only_target(content, base_cwd)
+    if cd_target:
+        _AGENT_SHELL_CWD = cd_target
+        return content, {"output": f"Working directory: {cd_target}", "exit_code": 0}, cd_target
+    if _AGENT_SHELL_CWD and os.path.isdir(_AGENT_SHELL_CWD):
+        return f"cd {shlex.quote(_AGENT_SHELL_CWD)} &&\\n{content}", None, _AGENT_SHELL_CWD
+    return content, None, base_cwd
+
+''',
+            '''def _odysseus_lite_realpath(path: str) -> str:
+    try:
+        return os.path.realpath(path)
+    except OSError:
+        return path
+
+
+def _odysseus_lite_path_under(path: str, root: str) -> bool:
+    try:
+        return os.path.commonpath([_odysseus_lite_realpath(path), _odysseus_lite_realpath(root)]) == _odysseus_lite_realpath(root)
+    except ValueError:
+        return False
+
+
+def _odysseus_lite_resolve_path(raw_path: str, cwd: str) -> str:
+    path = pathlib.Path(os.path.expanduser(str(raw_path).strip()))
+    if not path.is_absolute():
+        path = pathlib.Path(cwd) / path
+    return str(path.resolve(strict=False))
+
+
+def _bash_cd_only_target(content: str, cwd: str) -> Optional[str]:
+    """Return the target directory for a standalone `cd` command."""
+    lines = [line.strip() for line in content.splitlines() if line.strip() and not line.strip().startswith('#')]
+    if len(lines) != 1:
+        return None
+    try:
+        parts = shlex.split(lines[0])
+    except ValueError:
+        return None
+    if not parts or parts[0] != 'cd' or len(parts) > 2:
+        return None
+    target = parts[1] if len(parts) == 2 else os.path.expanduser('~')
+    resolved = _odysseus_lite_resolve_path(target, cwd)
+    return resolved if os.path.isdir(resolved) else None
+
+
+def _odysseus_lite_last_cd_target(content: str, cwd: str) -> Optional[str]:
+    """Track the last simple cd in a multi-command bash block."""
+    current = cwd
+    last = None
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            parts = shlex.split(line)
+        except ValueError:
+            continue
+        if not parts or parts[0] != "cd" or len(parts) > 2:
+            continue
+        target = parts[1] if len(parts) == 2 else os.path.expanduser("~")
+        resolved = _odysseus_lite_resolve_path(target, current)
+        if os.path.isdir(resolved):
+            current = resolved
+            last = resolved
+    return last
+
+
+def _odysseus_lite_scaffold_command(content: str) -> bool:
+    return bool(re.search(
+        r"(?m)^\\s*(dotnet\\s+new|npm\\s+(?:create|init)|npx\\s+(?:create-|create\\s)|"
+        r"pnpm\\s+create|yarn\\s+create|cargo\\s+new|go\\s+mod\\s+init|"
+        r"django-admin\\s+startproject|rails\\s+new|create-react-app\\b)",
+        content or "",
+        re.IGNORECASE,
+    ))
+
+
+def _odysseus_lite_safe_recreate_shell(target: str) -> str:
+    q_target = shlex.quote(target)
+    q_workspace = shlex.quote(_AGENT_WORKDIR)
+    return (
+        f"_odysseus_target={q_target}\\n"
+        f"_odysseus_workspace={q_workspace}\\n"
+        '_odysseus_target_real=$(realpath -m "$_odysseus_target")\\n'
+        '_odysseus_workspace_real=$(realpath -m "$_odysseus_workspace")\\n'
+        'case "$_odysseus_target_real" in "$_odysseus_workspace_real"/*)\\n'
+        '  if [ -e "$_odysseus_target/.git" ]; then\\n'
+        '    echo "[Odysseus Lite] refusing to auto-clean git workspace: $_odysseus_target" >&2\\n'
+        '  elif [ -d "$_odysseus_target" ]; then\\n'
+        '    find "$_odysseus_target" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +\\n'
+        '  fi\\n'
+        '  mkdir -p "$_odysseus_target"\\n'
+        '  ;;\\n'
+        '*)\\n'
+        '  echo "[Odysseus Lite] refusing to scaffold outside workspace: $_odysseus_target" >&2\\n'
+        '  exit 1\\n'
+        '  ;;\\n'
+        'esac'
+    )
+
+
+def _odysseus_lite_prepare_scaffold_content(content: str, cwd: str) -> str:
+    """Make small-model scaffold commands deterministic in the workspace.
+
+    This is intentionally generic: it only acts on common project scaffold
+    commands and only for targets below the configured persistent workspace.
+    It protects user repositories by refusing to auto-clean directories that
+    contain a .git folder.
+    """
+    if not _odysseus_lite_scaffold_command(content):
+        return content
+    lines = content.splitlines()
+    for idx, raw_line in enumerate(lines):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            parts = shlex.split(line)
+        except ValueError:
+            continue
+        if not parts or parts[0] != "mkdir":
+            continue
+        targets = [part for part in parts[1:] if not part.startswith("-")]
+        if not targets:
+            continue
+        target = _odysseus_lite_resolve_path(targets[-1], cwd)
+        if not _odysseus_lite_path_under(target, _AGENT_WORKDIR):
+            continue
+        if _odysseus_lite_realpath(target) == _odysseus_lite_realpath(_AGENT_WORKDIR):
+            continue
+        lines[idx] = _odysseus_lite_safe_recreate_shell(target)
+        return "\\n".join(lines)
+
+    if "--force" in content:
+        current = _odysseus_lite_realpath(cwd)
+        workspace = _odysseus_lite_realpath(_AGENT_WORKDIR)
+        if current != workspace and _odysseus_lite_path_under(current, workspace):
+            return _odysseus_lite_safe_recreate_shell(current) + "\\n" + content
+    return content
+
+
+def _translate_bash_pseudo_tools(content: str) -> str:
+    """Recover common pseudo tool calls that small models put in Bash."""
+    if not content:
+        return content
+    content = re.sub(r"(?m)^([ \\t]*)write_file\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
+    return content
+
+
+def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tuple[str, Optional[Dict], str]:
+    """Make separate `cd` and later command tool calls behave like a shell."""
+    global _AGENT_SHELL_CWD
+    content = _translate_bash_pseudo_tools(content)
+    base_cwd = _AGENT_SHELL_CWD or workspace or _AGENT_WORKDIR
+    if not os.path.isdir(base_cwd):
+        base_cwd = workspace or _AGENT_WORKDIR
+    cd_target = _bash_cd_only_target(content, base_cwd)
+    if cd_target:
+        _AGENT_SHELL_CWD = cd_target
+        return content, {"output": f"Working directory: {cd_target}", "exit_code": 0}, cd_target
+    content = _odysseus_lite_prepare_scaffold_content(content, base_cwd)
+    last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
+    if last_cd:
+        _AGENT_SHELL_CWD = last_cd
+    run_cwd = _AGENT_SHELL_CWD if _AGENT_SHELL_CWD and os.path.isdir(_AGENT_SHELL_CWD) else base_cwd
+    if run_cwd and os.path.isdir(run_cwd):
+        return f"cd {shlex.quote(run_cwd)} &&\\n{content}", None, run_cwd
+    return content, None, base_cwd
+
+''',
+        ),
+    ],
+)
+
+patch_file(
     "routes/shell_routes.py",
     [
         (

@@ -232,6 +232,15 @@ is emitted as a shell command inside a `bash` block by translating it to normal
 shell redirection. These are generic project-file safeguards and are not tied
 to .NET, MiniTasks, or a specific framework.
 
+Version 0.3.20 adds generic scaffold hygiene for small-model project creation
+loops. When a model runs common scaffold commands such as `dotnet new`,
+`npm create`, `npx create-*`, `pnpm create`, `yarn create`, `cargo new`,
+`go mod init`, `django-admin startproject`, or `rails new`, Odysseus Lite also
+tracks simple `cd` commands inside larger Bash blocks. If the scaffold target is
+a child of `/share/odysseus-workspace`, the wrapper can prepare a clean target
+directory before the scaffold runs. It refuses to auto-clean paths outside the
+workspace or directories containing `.git`.
+
 It also recovers this common malformed tool block:
 
 ````text

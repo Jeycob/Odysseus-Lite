@@ -82,6 +82,13 @@ a bash block is treated as normal shell redirection. The login page also
 recovers from stale first-run setup state by switching back to Sign In when the
 server says auth is already configured.
 
+Odysseus Lite 0.3.20 adds generic scaffold hygiene for small-model project
+creation loops. For common scaffold commands such as `dotnet new`,
+`npm create`, or `cargo new`, the agent wrapper keeps `cd` state from larger
+bash blocks and can prepare a clean target directory under
+`/share/odysseus-workspace`. It refuses to auto-clean paths outside the
+workspace or directories containing `.git`.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance
