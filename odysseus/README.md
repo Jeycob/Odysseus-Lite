@@ -327,6 +327,12 @@ points back to `install-dotnet-sdk --channel 9.0`, while `Could not resolve
 SDK` points the model at the `.csproj` `Project Sdk` value instead of letting
 it drift into package-manager or Windows PATH instructions.
 
+Version 0.3.30 keeps incomplete-verification state across Agent rounds. If a
+template builds but requested routes, source edits, or other implementation
+details are still missing from real workspace files, a follow-up summary without
+tool calls is rejected. The model is sent back to executable tools and reminded
+not to use Odysseus documents as project source files.
+
 It also recovers this common malformed tool block:
 
 ````text

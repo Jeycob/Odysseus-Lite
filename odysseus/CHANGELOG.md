@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.30
+
+- Keep incomplete-verification state across Agent rounds for small models. If a
+  build succeeds but requested routes/source changes are still missing from real
+  workspace files, a following prose-only summary is rejected and the model is
+  forced back to executable tools.
+- Apply the false-completion guard even after earlier tool events in the same
+  task. This catches the pattern where a small model scaffolds and builds a
+  template, stores the requested source in an Odysseus document, then claims the
+  project files were edited.
+
 ## 0.3.29
 
 - Preserve the add-on Agent environment when recovered small-model shell blocks
