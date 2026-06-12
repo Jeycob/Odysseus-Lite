@@ -88,8 +88,13 @@ patch_file(
     "src/tool_execution.py",
     [
         (
+            "import re\n",
+            "import re\nimport shlex\n",
+        ),
+        (
             "_AGENT_WORKDIR = DATA_DIR",
-            '_AGENT_WORKDIR = os.getenv("ODYSSEUS_AGENT_WORKDIR", DATA_DIR)',
+            '_AGENT_WORKDIR = os.getenv("ODYSSEUS_AGENT_WORKDIR", DATA_DIR)\n'
+            "_AGENT_SHELL_CWD: Optional[str] = None",
         ),
         (
             "    roots.append(DATA_DIR)\n",
@@ -101,81 +106,68 @@ patch_file(
 )
 
 patch_file(
-    "src/agent_tools/subprocess_tools.py",
+    "src/tool_execution.py",
     [
         (
-            "import asyncio\n"
-            "import sys\n"
-            "import time\n"
-            "import collections\n"
-            "from typing import Optional, Callable, Awaitable, Tuple, Dict\n",
-            "import asyncio\n"
-            "import sys\n"
-            "import time\n"
-            "import collections\n"
-            "import os\n"
-            "import shlex\n"
-            "from pathlib import Path\n"
-            "from typing import Optional, Callable, Awaitable, Tuple, Dict\n",
+            "_BG_MARKERS = {\"#!bg\", \"#bg\", \"# bg\", \"#background\", \"# background\", \"@background\", \"# @background\"}\n",
+            "def _bash_cd_only_target(content: str, cwd: str) -> Optional[str]:\n"
+            "    \"\"\"Return the target directory for a standalone `cd` command.\"\"\"\n"
+            "    lines = [line.strip() for line in content.splitlines() if line.strip() and not line.strip().startswith('#')]\n"
+            "    if len(lines) != 1:\n"
+            "        return None\n"
+            "    try:\n"
+            "        parts = shlex.split(lines[0])\n"
+            "    except ValueError:\n"
+            "        return None\n"
+            "    if not parts or parts[0] != 'cd' or len(parts) > 2:\n"
+            "        return None\n"
+            "    target = parts[1] if len(parts) == 2 else os.path.expanduser('~')\n"
+            "    path = pathlib.Path(target).expanduser()\n"
+            "    if not path.is_absolute():\n"
+            "        path = pathlib.Path(cwd) / path\n"
+            "    try:\n"
+            "        resolved = path.resolve(strict=True)\n"
+            "    except OSError:\n"
+            "        return None\n"
+            "    return str(resolved) if resolved.is_dir() else None\n\n"
+            "def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tuple[str, Optional[Dict], str]:\n"
+            "    \"\"\"Make separate `cd` and later command tool calls behave like a shell.\"\"\"\n"
+            "    global _AGENT_SHELL_CWD\n"
+            "    base_cwd = _AGENT_SHELL_CWD or workspace or _AGENT_WORKDIR\n"
+            "    if not os.path.isdir(base_cwd):\n"
+            "        base_cwd = workspace or _AGENT_WORKDIR\n"
+            "    cd_target = _bash_cd_only_target(content, base_cwd)\n"
+            "    if cd_target:\n"
+            "        _AGENT_SHELL_CWD = cd_target\n"
+            "        return content, {\"output\": f\"Working directory: {cd_target}\", \"exit_code\": 0}, cd_target\n"
+            "    if _AGENT_SHELL_CWD and os.path.isdir(_AGENT_SHELL_CWD):\n"
+            "        return f\"cd {shlex.quote(_AGENT_SHELL_CWD)} &&\\n{content}\", None, _AGENT_SHELL_CWD\n"
+            "    return content, None, base_cwd\n\n"
+            "_BG_MARKERS = {\"#!bg\", \"#bg\", \"# bg\", \"#background\", \"# background\", \"@background\", \"# @background\"}\n",
         ),
         (
-            "class BashTool:\n"
-            "    async def execute(self, content: str, ctx: dict) -> dict:\n"
-            "        from src.tool_execution import _AGENT_WORKDIR, _truncate\n"
-            "        progress_cb = ctx.get(\"progress_cb\")\n"
-            "        workspace = ctx.get(\"workspace\")\n"
-            "        _subproc_env = ctx.get(\"subproc_env\")\n"
-            "        proc = await asyncio.create_subprocess_shell(\n"
-            "            content,\n"
-            "            stdout=asyncio.subprocess.PIPE,\n"
-            "            stderr=asyncio.subprocess.PIPE,\n"
-            "            env=_subproc_env,\n"
-            "            cwd=workspace or _AGENT_WORKDIR,\n"
-            "        )\n",
-            "class BashTool:\n"
-            "    def __init__(self):\n"
-            "        self._cwd = None\n\n"
-            "    def _base_cwd(self, workspace: Optional[str], agent_workdir: str) -> str:\n"
-            "        cwd = self._cwd or workspace or agent_workdir\n"
-            "        if not os.path.isdir(cwd):\n"
-            "            cwd = workspace or agent_workdir\n"
-            "        return cwd\n\n"
-            "    def _cd_only_target(self, content: str, cwd: str) -> Optional[str]:\n"
-            "        lines = [line.strip() for line in content.splitlines() if line.strip() and not line.strip().startswith('#')]\n"
-            "        if len(lines) != 1:\n"
-            "            return None\n"
-            "        try:\n"
-            "            parts = shlex.split(lines[0])\n"
-            "        except ValueError:\n"
-            "            return None\n"
-            "        if not parts or parts[0] != 'cd' or len(parts) > 2:\n"
-            "            return None\n"
-            "        target = parts[1] if len(parts) == 2 else os.path.expanduser('~')\n"
-            "        path = Path(target).expanduser()\n"
-            "        if not path.is_absolute():\n"
-            "            path = Path(cwd) / path\n"
-            "        try:\n"
-            "            resolved = path.resolve(strict=True)\n"
-            "        except OSError:\n"
-            "            return None\n"
-            "        return str(resolved) if resolved.is_dir() else None\n\n"
-            "    async def execute(self, content: str, ctx: dict) -> dict:\n"
-            "        from src.tool_execution import _AGENT_WORKDIR, _truncate\n"
-            "        progress_cb = ctx.get(\"progress_cb\")\n"
-            "        workspace = ctx.get(\"workspace\")\n"
-            "        _subproc_env = ctx.get(\"subproc_env\")\n"
-            "        cwd = self._base_cwd(workspace, _AGENT_WORKDIR)\n"
-            "        cd_target = self._cd_only_target(content, cwd)\n"
-            "        if cd_target:\n"
-            "            self._cwd = cd_target\n"
-            "            return {\"output\": f\"Working directory: {cd_target}\", \"exit_code\": 0}\n"
-            "        proc = await asyncio.create_subprocess_shell(\n"
-            "            content,\n"
-            "            stdout=asyncio.subprocess.PIPE,\n"
-            "            stderr=asyncio.subprocess.PIPE,\n"
-            "            env=_subproc_env,\n"
-            "            cwd=cwd,\n"
-            "        )\n",
+            "    mcp = get_mcp_manager()\n"
+            "    if not mcp:\n"
+            "        return await _direct_fallback(tool, content, progress_cb=progress_cb) or {\"error\": f\"MCP manager not available for tool '{tool}'\", \"exit_code\": 1}\n\n"
+            "    server_id, tool_name = _MCP_TOOL_MAP[tool]\n",
+            "    mcp = get_mcp_manager()\n"
+            "    if not mcp:\n"
+            "        return await _direct_fallback(tool, content, progress_cb=progress_cb) or {\"error\": f\"MCP manager not available for tool '{tool}'\", \"exit_code\": 1}\n\n"
+            "    if tool == \"bash\":\n"
+            "        content, cd_result, _cwd = _prepare_bash_content(content)\n"
+            "        if cd_result:\n"
+            "            return cd_result\n\n"
+            "    server_id, tool_name = _MCP_TOOL_MAP[tool]\n",
+        ),
+        (
+            "    try:\n"
+            "        ctx = {\n",
+            "    try:\n"
+            "        if tool == \"bash\":\n"
+            "            content, cd_result, workspace = _prepare_bash_content(content, workspace)\n"
+            "            if cd_result:\n"
+            "                return cd_result\n"
+            "        ctx = {\n",
         ),
     ],
 )

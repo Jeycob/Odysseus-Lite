@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.9
+
+- Move sticky Bash working-directory handling into `src/tool_execution.py` so
+  the add-on builds against both old and new Odysseus upstream layouts.
+
 ## 0.3.8
 
 - Make the native Bash agent tool remember a successful standalone `cd <dir>`
