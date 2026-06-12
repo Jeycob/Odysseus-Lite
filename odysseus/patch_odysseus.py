@@ -909,6 +909,22 @@ patch_file(
         except ValueError:
             fixed_lines.append(raw_line)
             continue
+        indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
+        if parts and parts[0].lower() in {"nano", "vi", "vim", "emacs", "code", "notepad", "notepad.exe"}:
+            target = " ".join(parts[1:]) or "a file"
+            msg = (
+                f"[Odysseus Lite] skipped interactive editor '{parts[0]}' for {target}. "
+                "Agent shells are non-interactive; use write_file/edit_file or cat > file <<'EOF'."
+            )
+            fixed_lines.append(indent + f"echo {shlex.quote(msg)} >&2")
+            fixed_lines.append(indent + f": # Odysseus Lite skipped interactive editor {shlex.quote(parts[0])}")
+            continue
+        dotnet_line_changed = False
+        if len(parts) >= 3 and parts[0] == "dotnet" and parts[1] == "new":
+            template_alias = parts[2].lower().replace("_", "-")
+            if template_alias in {"minimal-api", "minimalapi", "minimal-web-api"}:
+                parts[2] = "web"
+                dotnet_line_changed = True
         # Small models often write `dotnet new webapi MyApp` or
         # `dotnet new webapi MyApp.csproj`. The .NET CLI treats that trailing
         # token as an invalid option. Interpret it as the project name.
@@ -925,10 +941,12 @@ patch_file(
                 rest = parts[4:]
                 if "--force" not in rest:
                     rest = [*rest, "--force"]
-                indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
                 fixed = ["dotnet", "new", parts[2], "-n", name, *rest]
                 fixed_lines.append(indent + " ".join(shlex.quote(p) for p in fixed))
                 continue
+        if dotnet_line_changed:
+            fixed_lines.append(indent + " ".join(shlex.quote(p) for p in parts))
+            continue
         fixed_lines.append(raw_line)
     return "\\n".join(fixed_lines)
 
@@ -961,7 +979,81 @@ patch_file(
             '''def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tuple[str, Optional[Dict], str]:
     """Make separate `cd` and later command tool calls behave like a shell."""
 ''',
-            '''def _odysseus_lite_normalize_current_dir_scaffold(content: str, cwd: str) -> str:
+            '''def _odysseus_lite_normalize_dotnet_project_paths(content: str, cwd: str) -> str:
+    """Point .NET project commands at the child project created earlier.
+
+    Small models often run `dotnet new ... -n Project` from a workspace root
+    and then immediately run `dotnet build Project.csproj` from that same
+    parent directory. The actual project file lives at
+    `Project/Project.csproj`. Keep this recovery scoped to project files
+    inferred from earlier dotnet scaffold commands in the same Bash block.
+    """
+    if not content or "dotnet" not in content:
+        return content
+    fixed_lines = []
+    current_cwd = cwd
+    scaffold_projects = {}
+    changed = False
+    for raw_line in content.splitlines():
+        stripped = raw_line.strip()
+        indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
+        if not stripped or stripped.startswith("#"):
+            fixed_lines.append(raw_line)
+            continue
+        try:
+            parts = shlex.split(stripped)
+        except ValueError:
+            fixed_lines.append(raw_line)
+            continue
+
+        if parts and parts[0] == "cd" and len(parts) <= 2:
+            cd_target = parts[1] if len(parts) == 2 else os.path.expanduser("~")
+            resolved = _odysseus_lite_resolve_path(cd_target, current_cwd)
+            if os.path.isdir(resolved):
+                current_cwd = resolved
+            fixed_lines.append(raw_line)
+            continue
+
+        if len(parts) >= 3 and parts[0] == "dotnet" and parts[1] == "new":
+            target = _odysseus_lite_dotnet_scaffold_target(parts, current_cwd)
+            if target:
+                project_name = pathlib.Path(target).name
+                if project_name:
+                    scaffold_projects[f"{project_name}.csproj"] = os.path.join(target, f"{project_name}.csproj")
+            fixed_lines.append(raw_line)
+            continue
+
+        if len(parts) >= 2 and parts[0] == "dotnet" and parts[1] in {"build", "run", "test", "publish"}:
+            new_parts = list(parts)
+            line_changed = False
+            idx = 2
+            while idx < len(new_parts):
+                part = new_parts[idx]
+                if part.startswith("-"):
+                    idx += 1
+                    continue
+                normalized = part.replace("\\\\", "/")
+                if normalized.endswith(".csproj"):
+                    project_file = pathlib.PurePosixPath(normalized).name
+                    candidate = scaffold_projects.get(project_file)
+                    current_path = _odysseus_lite_resolve_path(normalized, current_cwd)
+                    if candidate and not os.path.exists(current_path):
+                        new_parts[idx] = candidate
+                        line_changed = True
+                    elif normalized != part:
+                        new_parts[idx] = normalized
+                        line_changed = True
+                idx += 1
+            if line_changed:
+                fixed_lines.append(indent + " ".join(shlex.quote(p) for p in new_parts))
+                changed = True
+                continue
+
+        fixed_lines.append(raw_line)
+    return "\\n".join(fixed_lines) if changed else content
+
+
+def _odysseus_lite_normalize_current_dir_scaffold(content: str, cwd: str) -> str:
     """Avoid nested projects when a model already cd'd into the target dir."""
     if not content or not cwd:
         return content
@@ -1043,6 +1135,7 @@ def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tupl
     last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
 ''',
             '''    content = _odysseus_lite_normalize_current_dir_scaffold(content, base_cwd)
+    content = _odysseus_lite_normalize_dotnet_project_paths(content, base_cwd)
     content = _odysseus_lite_prepare_scaffold_content(content, base_cwd)
     last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
 ''',

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.25
+
+- Add another small-model command normalization pass for non-interactive Agent
+  shells. Interactive editors such as `nano`, `vi`, `vim`, `emacs`, `code`,
+  and `notepad` are skipped with a clear warning so the model must use real
+  file writes or file tools instead of pretending an editor session happened.
+- Normalize common .NET scaffold wording by mapping `dotnet new minimal-api`
+  style aliases to the valid `dotnet new web` template before execution.
+- When a small model scaffolds a .NET project and then runs a project command
+  against `Project.csproj` from the parent directory, rewrite that project path
+  to the actual scaffolded child project path. This is a generic .NET CLI path
+  recovery, not tied to MiniTasks.
+
 ## 0.3.24
 
 - Prevent small-model Agent runs from stopping after a successful build of a

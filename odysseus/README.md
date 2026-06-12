@@ -268,6 +268,15 @@ were never written by a real tool. In that case Odysseus Lite sends the model
 another action round to edit project files under the workspace and verify
 again.
 
+Version 0.3.25 adds another non-interactive shell safety pass for small local
+models. Interactive editors such as `nano`, `vi`, `vim`, `emacs`, `code`, and
+`notepad` are skipped with a clear warning because Agent tools cannot drive an
+editor session. The model must use `write_file`, `edit_file`, or ordinary
+non-interactive shell writes such as heredocs. It also normalizes common .NET
+CLI mistakes generally: `dotnet new minimal-api` is mapped to the valid
+minimal web template, and project commands that reference `Project.csproj` from
+the parent directory are pointed at the scaffolded child project file.
+
 It also recovers this common malformed tool block:
 
 ````text
