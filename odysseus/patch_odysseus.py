@@ -78,6 +78,81 @@ patch_file(
 )
 
 patch_file(
+    "src/agent_loop.py",
+    [
+        (
+            "    _MAX_INTENT_NUDGES = 2\n\n"
+            "    # \"I said I would, then didn't\" detector.",
+            "    _MAX_INTENT_NUDGES = 2\n"
+            "    _ODYSSEUS_LITE_MAX_FALSE_DONE_NUDGES = 2\n"
+            "    _odysseus_lite_false_done_nudges = 0\n"
+            "    _ODYSSEUS_LITE_ACTION_RE = re.compile(\n"
+            "        r\"\\\\b(create|recreate|generate|scaffold|build|fix|install|write|edit|make)\\\\b\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    _ODYSSEUS_LITE_CODING_RE = re.compile(\n"
+            "        r\"(/share/odysseus-workspace|dotnet|asp\\\\.net|webapi|web app|program\\\\.cs|\"\n"
+            "        r\"\\\\.csproj|write_file|edit_file|create_document|project files|miniTasks)\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    _ODYSSEUS_LITE_FALSE_DONE_RE = re.compile(\n"
+            "        r\"\\\\b(changed files|created|updated|built|build succeeded|successfully|summary)\\\\b\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n\n"
+            "    # \"I said I would, then didn't\" detector.",
+            False,
+        ),
+        (
+            "            _intent_text = _THINK_RE.sub(\"\", cleaned_round).strip()\n"
+            "            _intent_match = _INTENT_RE.search(_intent_text) if _intent_text else None\n"
+            "            # Only nudge when the round REALLY looks like an unfinished\n",
+            "            _intent_text = _THINK_RE.sub(\"\", cleaned_round).strip()\n"
+            "            _intent_match = _INTENT_RE.search(_intent_text) if _intent_text else None\n"
+            "            _odysseus_lite_original = _verifier_instruction or \"\"\n"
+            "            _odysseus_lite_combined = f\"{_odysseus_lite_original}\\n{_intent_text}\"\n"
+            "            _odysseus_lite_false_done = (\n"
+            "                not guide_only\n"
+            "                and not tool_events\n"
+            "                and _intent_text\n"
+            "                and _odysseus_lite_false_done_nudges < _ODYSSEUS_LITE_MAX_FALSE_DONE_NUDGES\n"
+            "                and _ODYSSEUS_LITE_ACTION_RE.search(_odysseus_lite_original)\n"
+            "                and _ODYSSEUS_LITE_CODING_RE.search(_odysseus_lite_combined)\n"
+            "                and _ODYSSEUS_LITE_FALSE_DONE_RE.search(_intent_text)\n"
+            "            )\n"
+            "            if _odysseus_lite_false_done:\n"
+            "                _odysseus_lite_false_done_nudges += 1\n"
+            "                _workspace = os.getenv(\"ODYSSEUS_AGENT_WORKDIR\", \"/share/odysseus-workspace\")\n"
+            "                logger.info(\n"
+            "                    \"[odysseus-lite] false coding completion nudge #%s on round %s\",\n"
+            "                    _odysseus_lite_false_done_nudges,\n"
+            "                    round_num,\n"
+            "                )\n"
+            "                messages.append({\n"
+            "                    \"role\": \"system\",\n"
+            "                    \"content\": (\n"
+            "                        \"Odysseus Lite detected that your previous answer claimed a coding task \"\n"
+            "                        \"was created, changed, or built, but this turn has no tool execution results. \"\n"
+            "                        \"That means nothing was proven on disk. Do not apologize, explain, or summarize. \"\n"
+            "                        \"Your next response must contain only executable tool blocks. Use fenced blocks \"\n"
+            "                        \"tagged bash, write_file, or edit_file. For an ASP.NET Core MiniTasks request, \"\n"
+            "                        \"run a bash block like:\\n\"\n"
+            "                        \"```bash\\n\"\n"
+            "                        f\"install-dotnet-sdk --channel 9.0\\n\"\n"
+            "                        f\"dotnet new webapi -o {_workspace}/MiniTasks --force\\n\"\n"
+            "                        f\"dotnet build {_workspace}/MiniTasks/MiniTasks.csproj\\n\"\n"
+            "                        \"```\\n\"\n"
+            "                        \"Only after a successful tool result may you say which files changed.\"\n"
+            "                    ),\n"
+            "                })\n"
+            "                yield f'data: {json.dumps({\"type\": \"agent_step\", \"round\": round_num + 1})}\\n\\n'\n"
+            "                continue\n"
+            "            # Only nudge when the round REALLY looks like an unfinished\n",
+            False,
+        ),
+    ],
+)
+
+patch_file(
     "src/llm_core.py",
     [
         ("import json\n", "import json\nimport os\n"),

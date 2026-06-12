@@ -184,6 +184,11 @@ stop once a build or smoke test succeeds. This matters most for small local
 models such as 3B/7B coders, which can otherwise keep repeating the same
 troubleshooting checklist after the tool output already shows success.
 
+Version 0.3.13 also guards the opposite failure mode: a small model claiming
+that files were changed or a build passed even though no tool ran. When that
+happens during a coding task, Odysseus sends the model a retry instruction to
+use real `bash`, `write_file`, or `edit_file` tool blocks.
+
 For an ASP.NET Core web app, prefer a prompt like:
 
 ```text

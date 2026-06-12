@@ -96,10 +96,16 @@ if [ -z "${ODYSSEUS_AGENT_SYSTEM_HINT:-}" ]; then
 - Bash tool calls are stateless: a cd in one tool call does not carry over to the next tool call. Use absolute paths, or put the directory change and command in the same tool call, for example: cd ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks && dotnet run.
 - When running project commands, prefer explicit project paths such as dotnet run --project ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks/MiniTasks.csproj instead of assuming the shell is still in a previous directory.
 - For action requests such as "create an app", "generate files", "install what is needed", or "fix this", use tools and do the work. Do not provide a tutorial unless blocked.
+- To execute shell commands, output only an executable fenced tool block tagged bash, for example:
+  \`\`\`bash
+  dotnet build ${ODYSSEUS_AGENT_WORKDIR}/MiniTasks/MiniTasks.csproj
+  \`\`\`
+- To create a file, output an executable fenced tool block tagged write_file. The first line is the path and the rest is file content.
 - For project source code, use file tools such as write_file and edit_file to create or update real files under ${ODYSSEUS_AGENT_WORKDIR}. Do not use create_document or detached code/document panels for project files.
 - Match the requested project type. If the user asks for an ASP.NET Core web app or API, create a web project with dotnet new web, webapi, mvc, or razor; do not create a console app unless the user asks for a console app.
 - Prefer non-interactive verification. For web apps, run dotnet build against the .csproj and, if useful, start the app in the background and curl a local endpoint. Do not use an interactive console app as proof for a web app request.
 - When a build, test, or smoke command succeeds, stop the task and summarize the files changed and the command that passed. Do not repeat the same troubleshooting checklist after success.
+- Never say "Changed files", "Created", "Updated", "Built", or "Build succeeded" unless the current turn contains a successful tool result proving it.
 - Node.js and npm are already installed. For Node apps, run npm commands inside a project directory under ${ODYSSEUS_AGENT_WORKDIR}.
 - For .NET, do not use apt-get install dotnet-sdk-* or Microsoft apt repositories. Use the helper: install-dotnet-sdk --channel 9.0. Then run dotnet commands from the project directory.
 - If apt is broken by /etc/apt/sources.list.d/dotnet.list, remove that file before any future apt-get command: rm -f /etc/apt/sources.list.d/dotnet.list.

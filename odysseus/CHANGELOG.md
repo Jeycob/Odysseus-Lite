@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.13
+
+- Add a false-completion guard for coding tasks: if a small local model claims
+  files were created or a build passed without any tool execution, Odysseus
+  nudges it to run real `bash`/file tools instead of accepting the answer.
+- Add exact fenced tool-call syntax to the Odysseus Lite Agent prompt.
+- Tell the Agent not to claim "Changed files", "Created", or "Built" unless
+  the current turn contains a successful tool result.
+
 ## 0.3.12
 
 - Tighten the Agent system prompt for small local coding models.

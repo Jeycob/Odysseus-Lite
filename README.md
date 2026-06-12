@@ -70,6 +70,11 @@ models. It tells the Agent to write source code into real project files, choose
 web templates for ASP.NET Core web app requests, and stop after a successful
 build or smoke test instead of repeating troubleshooting text.
 
+Odysseus Lite 0.3.13 adds a guard for false coding-task completions. If a
+small local model claims that files were created or a build passed without any
+tool execution, the add-on nudges it to run real `bash`/file tools instead of
+accepting the answer as done.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance
