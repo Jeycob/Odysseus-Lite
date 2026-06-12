@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.19
+
+- Make small-model tool parsing heredoc-aware. Markdown examples inside a
+  shell heredoc no longer close the surrounding `bash` tool block early.
+- Recover another common small-model mistake by translating `write_file ... <<`
+  lines that appear inside a `bash` tool block into normal shell redirection.
+  This is generic for generated project files and documentation; it is not
+  tied to .NET, MiniTasks, or any specific framework.
+- Harden first-login handling further: if a stale/mobile setup screen tries to
+  create an admin account after auth is already configured, the page switches
+  back to Sign In instead of staying stuck in first-run setup.
+
 ## 0.3.18
 
 - For small-model Agent runs, protect tool parsing from nested markdown fences

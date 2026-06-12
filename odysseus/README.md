@@ -79,6 +79,11 @@ GitHub instance.
 Version 0.3.2 fixes the common broken/empty `auth.json` case by validating the
 file at every start and creating an admin account if the file has no users.
 
+Version 0.3.19 also handles stale Home Assistant mobile/Ingress login state:
+if the browser is still showing the first-run setup form but the server already
+has users, Odysseus Lite switches back to the normal Sign In flow when setup is
+rejected as already configured.
+
 ## Reset Admin Password
 
 If an admin user exists but you lost the password:
@@ -219,6 +224,13 @@ examples contain nested triple-backtick fences inside a shell/python tool
 block. Those inner fences are neutralized before execution, so the Agent does
 not run a truncated command. It also correctly treats `use_web=false` form
 values as false for API clients.
+
+Version 0.3.19 makes that protection aware of heredocs, so README examples
+inside `cat <<EOF` style shell writes do not accidentally close the outer tool
+block. It also recovers a common small-model error where `write_file ... <<EOF`
+is emitted as a shell command inside a `bash` block by translating it to normal
+shell redirection. These are generic project-file safeguards and are not tied
+to .NET, MiniTasks, or a specific framework.
 
 It also recovers this common malformed tool block:
 

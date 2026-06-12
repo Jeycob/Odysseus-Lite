@@ -76,6 +76,12 @@ block contains markdown examples for generated docs. Nested triple-backtick
 examples are neutralized before parsing so the executable block is not cut
 short. It also fixes `use_web=false` form handling for API clients.
 
+Odysseus Lite 0.3.19 makes that parser heredoc-aware and recovers a second
+common small-model mistake: `write_file ... <<EOF` accidentally emitted inside
+a bash block is treated as normal shell redirection. The login page also
+recovers from stale first-run setup state by switching back to Sign In when the
+server says auth is already configured.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

@@ -124,6 +124,7 @@ if [ -z "${ODYSSEUS_SMALL_MODEL_AGENT_HINT:-}" ]; then
 - Shell commands must use an opening fence tag like \`\`\`bash. Do not write an untagged code block whose first line is bash.
 - Inside a bash/python tool block, do not include nested triple-backtick markdown fences. When writing README code examples, prefer a quoted heredoc, printf, or markdown tildes (~~~) so the tool block is not cut short.
 - For file changes, use write_file or edit_file for real files under ${ODYSSEUS_AGENT_WORKDIR}, or use shell commands that write there. Do not use create_document for project source files.
+- Never call write_file, edit_file, or read_file as shell commands inside a bash block. In bash, use normal shell redirection such as cat > file <<'EOF', or use a separate fenced write_file/edit_file tool block.
 - Never say "Changed files", "Created", "Updated", "Built", "Installed", "Fixed", or "Tests passed" unless the current turn contains a successful tool result proving it.
 - If a tool result says a build, test, lint, typecheck, or smoke check succeeded, stop and summarize. Do not run more diagnostics, reinstall tools, or retry with sudo.
 - If a tool fails, read the error, run one concrete diagnostic or fix, and try again. Do not repeat a generic checklist.
