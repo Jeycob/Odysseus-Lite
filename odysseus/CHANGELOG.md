@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.5
+
+- Add a persistent Home Assistant `/share/odysseus-workspace` agent workspace.
+- Point agent shell, Python, and file tools at the workspace through
+  `ODYSSEUS_AGENT_WORKDIR`.
+- Add `/share/odysseus-tools` to the agent PATH for runtime-installed tools.
+- Add an `install-dotnet-sdk` helper that installs .NET into persistent
+  `/share` storage.
+- Add an optional trusted workspace bootstrap script for replaying setup after
+  add-on updates.
+- Include common development/debug tools such as `ripgrep`, `jq`, `zip`,
+  `unzip`, `python3-venv`, `sudo`, .NET runtime dependencies, and network
+  diagnostics.
+
 ## 0.3.4
 
 - Auto-configure a shared Ollama Lite endpoint from add-on options.

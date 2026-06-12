@@ -61,12 +61,67 @@ try:
 except (TypeError, ValueError):
     upload_mb = 10
 emit("ODYSSEUS_CHAT_UPLOAD_MAX_BYTES", max(upload_mb, 1) * 1024 * 1024)
+emit("ODYSSEUS_AGENT_WORKDIR", options.get("workspace_dir", "/share/odysseus-workspace"))
+emit("ODYSSEUS_TOOLS_DIR", options.get("tools_dir", "/share/odysseus-tools"))
+emit("ODYSSEUS_RUN_WORKSPACE_BOOTSTRAP", "true" if options.get("run_workspace_bootstrap", False) else "false")
+emit("ODYSSEUS_WORKSPACE_BOOTSTRAP_SCRIPT", options.get("workspace_bootstrap_script", "/share/odysseus-workspace/bootstrap.sh"))
 PY
 
 # shellcheck disable=SC1090
 . "${ENV_FILE}"
 
 mkdir -p /data/odysseus /data/logs /data/odysseus/fastembed /data/odysseus/huggingface
+
+ODYSSEUS_AGENT_WORKDIR="${ODYSSEUS_AGENT_WORKDIR:-/share/odysseus-workspace}"
+ODYSSEUS_TOOLS_DIR="${ODYSSEUS_TOOLS_DIR:-/share/odysseus-tools}"
+mkdir -p \
+  "${ODYSSEUS_AGENT_WORKDIR}" \
+  "${ODYSSEUS_AGENT_WORKDIR}/.local/bin" \
+  "${ODYSSEUS_TOOLS_DIR}/bin" \
+  "${ODYSSEUS_TOOLS_DIR}/dotnet" \
+  "${ODYSSEUS_TOOLS_DIR}/tmp"
+
+export ODYSSEUS_AGENT_WORKDIR
+export ODYSSEUS_TOOLS_DIR
+export PATH="${ODYSSEUS_AGENT_WORKDIR}/.local/bin:${ODYSSEUS_TOOLS_DIR}/bin:${ODYSSEUS_TOOLS_DIR}/dotnet:${PATH}"
+
+if [ ! -f "${ODYSSEUS_AGENT_WORKDIR}/README.md" ]; then
+  cat > "${ODYSSEUS_AGENT_WORKDIR}/README.md" <<'EOF'
+# Odysseus Workspace
+
+This directory is persistent Home Assistant `/share` storage.
+
+Agent bash, python, read_file, write_file, grep, glob, and ls tools default here.
+Project files created here survive add-on restarts and updates and are visible
+through Samba/Studio Code Server under `share/odysseus-workspace`.
+
+Runtime-installed user tools should go under `/share/odysseus-tools`.
+For .NET, the add-on provides:
+
+```bash
+install-dotnet-sdk
+```
+
+To replay trusted setup commands on every add-on start, create:
+
+```text
+/share/odysseus-workspace/bootstrap.sh
+```
+
+then enable `run_workspace_bootstrap` in the add-on Configuration tab.
+EOF
+fi
+
+if [ "${ODYSSEUS_RUN_WORKSPACE_BOOTSTRAP:-false}" = "true" ]; then
+  BOOTSTRAP_SCRIPT="${ODYSSEUS_WORKSPACE_BOOTSTRAP_SCRIPT:-${ODYSSEUS_AGENT_WORKDIR}/bootstrap.sh}"
+  if [ -f "${BOOTSTRAP_SCRIPT}" ]; then
+    echo "[Odysseus Lite] Running workspace bootstrap: ${BOOTSTRAP_SCRIPT}"
+    chmod +x "${BOOTSTRAP_SCRIPT}" || true
+    "${BOOTSTRAP_SCRIPT}"
+  else
+    echo "[Odysseus Lite] Workspace bootstrap enabled but script was not found: ${BOOTSTRAP_SCRIPT}"
+  fi
+fi
 
 if [ ! -L /opt/odysseus/data ]; then
   rm -rf /opt/odysseus/data

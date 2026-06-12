@@ -115,6 +115,75 @@ restart will reset that admin password again.
   want that feature.
 - Web research works best with an external SearXNG instance.
 
+## Agent Development Workspace
+
+Version 0.3.5 turns Odysseus Lite into a more practical development sandbox for
+admin users.
+
+Agent tools default to:
+
+```text
+/share/odysseus-workspace
+```
+
+That path is Home Assistant `/share` storage. Files created there survive add-on
+restarts and updates, and are visible from Samba/Studio Code Server as:
+
+```text
+share/odysseus-workspace
+```
+
+Runtime-installed user tools should go under:
+
+```text
+/share/odysseus-tools
+```
+
+The add-on adds these paths to the agent environment:
+
+```text
+/share/odysseus-workspace/.local/bin
+/share/odysseus-tools/bin
+/share/odysseus-tools/dotnet
+```
+
+The container includes `apt-get`, build tools, Git, Node.js/npm, Python venv,
+`ripgrep`, `jq`, `zip`, `unzip`, `tmux`, and common network diagnostics. An
+admin agent can still install additional system packages with `apt-get`, but
+packages installed into the container layer can disappear after an add-on
+rebuild/update. Keep projects and user tools in `/share`.
+
+For .NET development, ask the agent to run:
+
+```bash
+install-dotnet-sdk
+dotnet --info
+dotnet new web -o MiniTasks
+```
+
+`install-dotnet-sdk` installs .NET into `/share/odysseus-tools/dotnet`, so it
+survives add-on rebuilds.
+
+For setup that should replay on every add-on start, create:
+
+```text
+/share/odysseus-workspace/bootstrap.sh
+```
+
+then enable `run_workspace_bootstrap` in the add-on Configuration tab. Only put
+commands there that you trust, because it runs as part of the add-on startup.
+
+Useful Agent prompt:
+
+```text
+You are inside the Odysseus Lite Home Assistant add-on.
+Use Agent mode. Do not give instructions unless blocked.
+Work in /share/odysseus-workspace.
+Install missing tools yourself. Prefer persistent installs under /share/odysseus-tools.
+If .NET is missing, run install-dotnet-sdk.
+Create the project files directly and then run a smoke test.
+```
+
 ## Blank Replies With Ollama
 
 If Odysseus creates an empty assistant message and the Ollama Lite log shows

@@ -13,6 +13,32 @@ https://github.com/Jeycob/Odysseus-Lite
 
 Install `Odysseus Lite` from the add-on store.
 
+## Agent Workspace
+
+Odysseus Lite 0.3.5 gives the admin agent a persistent workspace:
+
+```text
+/share/odysseus-workspace
+```
+
+Files created there survive add-on restarts and are visible from Home Assistant
+Samba/Studio Code Server under `share/odysseus-workspace`.
+
+Runtime-installed user tools live under:
+
+```text
+/share/odysseus-tools
+```
+
+For .NET projects, use Agent mode and ask Odysseus to run:
+
+```bash
+install-dotnet-sdk
+dotnet new web -o MiniTasks
+```
+
+The helper installs .NET into persistent `/share` storage.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

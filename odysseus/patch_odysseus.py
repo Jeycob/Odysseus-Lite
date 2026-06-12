@@ -47,6 +47,40 @@ patch_file(
 )
 
 patch_file(
+    "src/tool_execution.py",
+    [
+        (
+            "_AGENT_WORKDIR = DATA_DIR",
+            '_AGENT_WORKDIR = os.getenv("ODYSSEUS_AGENT_WORKDIR", DATA_DIR)',
+        ),
+        (
+            "    roots.append(DATA_DIR)\n",
+            "    roots.append(_AGENT_WORKDIR)\n"
+            "    if os.path.realpath(_AGENT_WORKDIR) != os.path.realpath(DATA_DIR):\n"
+            "        roots.append(DATA_DIR)\n",
+        ),
+    ],
+)
+
+patch_file(
+    "routes/shell_routes.py",
+    [
+        (
+            "            cwd=str(Path.home()),\n",
+            '            cwd=os.environ.get("ODYSSEUS_AGENT_WORKDIR") or str(Path.home()),\n',
+        ),
+        (
+            "        cwd=str(Path.home()),\n",
+            '        cwd=os.environ.get("ODYSSEUS_AGENT_WORKDIR") or str(Path.home()),\n',
+        ),
+        (
+            "                    cwd=str(Path.home()),\n",
+            '                    cwd=os.environ.get("ODYSSEUS_AGENT_WORKDIR") or str(Path.home()),\n',
+        ),
+    ],
+)
+
+patch_file(
     "static/js/admin.js",
     [
         (
