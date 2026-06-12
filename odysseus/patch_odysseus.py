@@ -53,7 +53,8 @@ patch_file(
             "        budget_hit = False\n"
             "        _odysseus_lite_round_had_scaffold = False\n"
             "        _odysseus_lite_round_had_source_edit = False\n"
-            "        _odysseus_lite_scaffold_only_verification = False\n",
+            "        _odysseus_lite_scaffold_only_verification = False\n"
+            "        _odysseus_lite_completion_issue_text = \"\"\n",
             False,
         ),
         (
@@ -85,7 +86,7 @@ patch_file(
     [
         (
             "import logging\n",
-            "import logging\nimport os\n",
+            "import logging\nimport os\nimport shlex\n",
         ),
         (
             "logger = logging.getLogger(__name__)\n",
@@ -222,6 +223,119 @@ patch_file(
             "        if line and not line.startswith(\"#\") and verify_re.search(line):\n"
             "            return line[:160]\n"
             "    return \"verification command\"\n\n\n"
+            "def _odysseus_lite_last_user_text(messages: List[Dict]) -> str:\n"
+            "    for msg in reversed(messages or []):\n"
+            "        if msg.get(\"role\") == \"user\":\n"
+            "            content = msg.get(\"content\")\n"
+            "            if isinstance(content, str):\n"
+            "                return content\n"
+            "            return str(content or \"\")\n"
+            "    return \"\"\n\n\n"
+            "def _odysseus_lite_requested_http_routes(text: str) -> List[tuple[str, str]]:\n"
+            "    routes: List[tuple[str, str]] = []\n"
+            "    seen = set()\n"
+            "    for match in re.finditer(r\"\\b(GET|POST|PUT|PATCH|DELETE)\\s+(`?)(/[A-Za-z0-9_./{}:-]*)(?:\\2)\", text or \"\", re.IGNORECASE):\n"
+            "        method = match.group(1).upper()\n"
+            "        path = (match.group(3).rstrip().rstrip(\".,;:)\") or \"/\")\n"
+            "        key = (method, path)\n"
+            "        if key not in seen:\n"
+            "            routes.append(key)\n"
+            "            seen.add(key)\n"
+            "    return routes\n\n\n"
+            "def _odysseus_lite_project_roots_from_command(command: str) -> List[str]:\n"
+            "    roots: List[str] = []\n"
+            "    workspace = os.getenv(\"ODYSSEUS_AGENT_WORKDIR\", \"/share/odysseus-workspace\")\n"
+            "    cwd = workspace\n"
+            "    for raw_line in (command or \"\").splitlines():\n"
+            "        line = raw_line.strip()\n"
+            "        if not line or line.startswith(\"#\"):\n"
+            "            continue\n"
+            "        try:\n"
+            "            parts = shlex.split(line)\n"
+            "        except Exception:\n"
+            "            parts = line.split()\n"
+            "        if parts and parts[0] == \"cd\" and len(parts) <= 2:\n"
+            "            target = parts[1] if len(parts) == 2 else os.path.expanduser(\"~\")\n"
+            "            if not os.path.isabs(target):\n"
+            "                target = os.path.join(cwd, target)\n"
+            "            cwd = os.path.realpath(target)\n"
+            "            if os.path.isdir(cwd) and cwd not in roots:\n"
+            "                roots.append(cwd)\n"
+            "        for part in parts:\n"
+            "            cleaned = part.strip().strip(\"'\\\"\")\n"
+            "            if cleaned.endswith(('.csproj', 'package.json', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'pom.xml', 'build.gradle')):\n"
+            "                root = os.path.dirname(cleaned) or cwd\n"
+            "                if not os.path.isabs(root):\n"
+            "                    root = os.path.join(cwd, root)\n"
+            "                root = os.path.realpath(root)\n"
+            "                if os.path.isdir(root) and root not in roots:\n"
+            "                    roots.append(root)\n"
+            "    if not roots:\n"
+            "        roots.append(workspace)\n"
+            "    return roots\n\n\n"
+            "def _odysseus_lite_collect_source_text(roots: List[str], max_files: int = 240) -> str:\n"
+            "    exts = {'.cs', '.js', '.jsx', '.ts', '.tsx', '.py', '.go', '.rs', '.java', '.kt', '.php', '.rb', '.html', '.css', '.json'}\n"
+            "    skip_dirs = {'bin', 'obj', 'node_modules', '.git', '.venv', 'venv', 'dist', 'build', 'target'}\n"
+            "    chunks: List[str] = []\n"
+            "    count = 0\n"
+            "    for root in roots:\n"
+            "        if not os.path.isdir(root):\n"
+            "            continue\n"
+            "        for dirpath, dirnames, filenames in os.walk(root):\n"
+            "            dirnames[:] = [d for d in dirnames if d not in skip_dirs]\n"
+            "            depth = os.path.relpath(dirpath, root).count(os.sep)\n"
+            "            if depth > 8:\n"
+            "                dirnames[:] = []\n"
+            "                continue\n"
+            "            for name in filenames:\n"
+            "                if count >= max_files:\n"
+            "                    return \"\\n\".join(chunks)\n"
+            "                if os.path.splitext(name)[1].lower() not in exts:\n"
+            "                    continue\n"
+            "                path = os.path.join(dirpath, name)\n"
+            "                try:\n"
+            "                    if os.path.getsize(path) > 512_000:\n"
+            "                        continue\n"
+            "                    with open(path, 'r', encoding='utf-8', errors='ignore') as fh:\n"
+            "                        chunks.append(f\"\\n// {path}\\n\" + fh.read())\n"
+            "                    count += 1\n"
+            "                except OSError:\n"
+            "                    continue\n"
+            "    return \"\\n\".join(chunks)\n\n\n"
+            "def _odysseus_lite_route_present(source_text: str, method: str, path: str) -> bool:\n"
+            "    method = method.upper()\n"
+            "    variants = [path]\n"
+            "    if path == \"/\":\n"
+            "        variants.append(\"\")\n"
+            "    funcs = {\n"
+            "        'GET': ('MapGet', 'HttpGet', 'get'),\n"
+            "        'POST': ('MapPost', 'HttpPost', 'post'),\n"
+            "        'PUT': ('MapPut', 'HttpPut', 'put'),\n"
+            "        'PATCH': ('MapPatch', 'HttpPatch', 'patch'),\n"
+            "        'DELETE': ('MapDelete', 'HttpDelete', 'delete'),\n"
+            "    }.get(method, (method.lower(),))\n"
+            "    for variant in variants:\n"
+            "        quoted = re.escape(variant)\n"
+            "        for func in funcs:\n"
+            "            pattern = rf\"\\b{re.escape(func)}\\s*\\(\\s*[\\\"']{quoted}[\\\"']\"\n"
+            "            if re.search(pattern, source_text, re.IGNORECASE):\n"
+            "                return True\n"
+            "        # Common decorator syntaxes: @app.get('/x'), router.post('/x')\n"
+            "        if re.search(rf\"\\b(?:app|router)\\s*\\.\\s*{method.lower()}\\s*\\(\\s*[\\\"']{quoted}[\\\"']\", source_text, re.IGNORECASE):\n"
+            "            return True\n"
+            "    return False\n\n\n"
+            "def _odysseus_lite_completion_issue(messages: List[Dict], command: str) -> str:\n"
+            "    requested = _odysseus_lite_requested_http_routes(_odysseus_lite_last_user_text(messages))\n"
+            "    if not requested:\n"
+            "        return \"\"\n"
+            "    roots = _odysseus_lite_project_roots_from_command(command)\n"
+            "    source_text = _odysseus_lite_collect_source_text(roots)\n"
+            "    if not source_text.strip():\n"
+            "        return \"could not read source files to verify requested HTTP routes\"\n"
+            "    missing = [f\"{method} {path}\" for method, path in requested if not _odysseus_lite_route_present(source_text, method, path)]\n"
+            "    if missing:\n"
+            "        return \"requested HTTP routes are missing from source files after verification: \" + \", \".join(missing)\n"
+            "    return \"\"\n\n\n"
             "def _odysseus_lite_recover_prefixed_tool_blocks(text: str, disabled_tools: Optional[set] = None) -> List[ToolBlock]:\n"
             "    \"\"\"Recover untagged fences whose first line is a tool name.\n\n"
             "    Small local models often emit ```\\nbash\\n...``` instead of\n"
@@ -457,13 +571,23 @@ patch_file(
             "            if _odysseus_lite_action_recovery_enabled(model):\n"
             "                _success_label = _odysseus_lite_successful_verification(block.tool_type, block.content, result)\n"
             "                if _success_label:\n"
+            "                    _completion_issue = _odysseus_lite_completion_issue(messages, block.content)\n"
             "                    _scaffold_only = (\n"
             "                        _odysseus_lite_round_had_scaffold\n"
             "                        and not _odysseus_lite_round_had_source_edit\n"
             "                        and _ODYSSEUS_LITE_DECLARED_SOURCE_EDIT_RE.search(round_response or \"\")\n"
             "                    )\n"
-            "                    if _scaffold_only:\n"
+            "                    if _completion_issue:\n"
             "                        _odysseus_lite_scaffold_only_verification = True\n"
+            "                        _odysseus_lite_completion_issue_text = _completion_issue\n"
+            "                        logger.info(\n"
+            "                            \"[odysseus-lite] verification needs more work after %s: %s\",\n"
+            "                            _success_label,\n"
+            "                            _completion_issue,\n"
+            "                        )\n"
+            "                    elif _scaffold_only:\n"
+            "                        _odysseus_lite_scaffold_only_verification = True\n"
+            "                        _odysseus_lite_completion_issue_text = \"successful build only proved a freshly scaffolded template\"\n"
             "                        logger.info(\n"
             "                            \"[odysseus-lite] deferring scaffold-only verification after %s\",\n"
             "                            _success_label,\n"
@@ -490,12 +614,12 @@ patch_file(
             "        _append_tool_results(messages, round_response, native_tool_calls,\n",
             "        if _odysseus_lite_scaffold_only_verification:\n"
             "            _workspace = os.getenv(\"ODYSSEUS_AGENT_WORKDIR\", \"/share/odysseus-workspace\")\n"
+            "            _issue = _odysseus_lite_completion_issue_text or \"the last successful build only proved a freshly scaffolded template\"\n"
             "            messages.append({\n"
             "                \"role\": \"system\",\n"
             "                \"content\": (\n"
-            "                    \"Odysseus Lite detected that the last successful build only proved a freshly scaffolded template. \"\n"
-            "                    \"Your previous response described source files, routes, endpoints, or implementation details, \"\n"
-            "                    \"but no real file-write/edit tool ran for those source changes. Continue with executable tools only. \"\n"
+            "                    f\"Odysseus Lite detected incomplete work after a successful verification command: {_issue}. \"\n"
+            "                    \"Do not summarize completion yet. Continue with executable tools only. \"\n"
             "                    \"Edit real project files under the persistent workspace, then run the verification command again. \"\n"
             "                    f\"Workspace: {_workspace}.\"\n"
             "                ),\n"
@@ -895,7 +1019,7 @@ patch_file(
     """Recover common pseudo tool calls that small models put in Bash."""
     if not content:
         return content
-    content = re.sub(r"(?m)^([ \\t]*)write_file\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
+    content = re.sub(r"(?m)^([ \\t]*)(?:write_file|edit_file)\\s+(.+?)\\s+<<", r"\\1cat > \\2 <<", content)
     content = re.sub(r"(?m)(^|[ \\t])\\.\\\\(?=[^ \\t\\r\\n;&|]+)", r"\\1./", content)
 
     fixed_lines = []
@@ -949,6 +1073,18 @@ patch_file(
             continue
         fixed_lines.append(raw_line)
     return "\\n".join(fixed_lines)
+
+
+def _odysseus_lite_should_strict_bash(content: str) -> bool:
+    """Use fail-fast shell semantics for scaffold/build/test scripts."""
+    return bool(re.search(
+        r"(?m)^\\s*(dotnet\\s+(?:new|build|test|publish)|npm\\s+(?:create|init|test|run\\s+)|"
+        r"pnpm\\s+(?:create|test|run\\s+)|yarn\\s+(?:create|test|build)|"
+        r"cargo\\s+(?:new|build|test|check)|go\\s+(?:mod\\s+init|build|test)|"
+        r"pytest|python\\s+-m\\s+pytest|mvn\\s+test|gradle\\s+test|make\\s+(?:build|test|check))\\b",
+        content or "",
+        re.IGNORECASE,
+    ))
 
 ''',
             False,
@@ -1137,6 +1273,8 @@ def _prepare_bash_content(content: str, workspace: Optional[str] = None) -> tupl
             '''    content = _odysseus_lite_normalize_current_dir_scaffold(content, base_cwd)
     content = _odysseus_lite_normalize_dotnet_project_paths(content, base_cwd)
     content = _odysseus_lite_prepare_scaffold_content(content, base_cwd)
+    if _odysseus_lite_should_strict_bash(content) and not re.search(r"(?m)^\\s*set\\s+-", content):
+        content = "set -e\\n" + content
     last_cd = _odysseus_lite_last_cd_target(content, base_cwd)
 ''',
             False,

@@ -128,6 +128,7 @@ if [ -z "${ODYSSEUS_SMALL_MODEL_AGENT_HINT:-}" ]; then
 - Never use interactive terminal editors such as nano, vi, vim, emacs, code, or notepad inside Agent tools. Use write_file/edit_file or a non-interactive heredoc/write command.
 - Never say "Changed files", "Created", "Updated", "Built", "Installed", "Fixed", or "Tests passed" unless the current turn contains a successful tool result proving it.
 - If a tool result says a build, test, lint, typecheck, or smoke check succeeded, stop and summarize. Do not run more diagnostics, reinstall tools, or retry with sudo.
+- If the user requested specific routes, files, commands, UI controls, or other artifacts, verify those exact artifacts exist or respond before declaring completion; a scaffold/template build alone is not enough.
 - If a tool fails, read the error, run one concrete diagnostic or fix, and try again. Do not repeat a generic checklist.
 - For create/recreate project requests, scaffold in a dedicated child directory under ${ODYSSEUS_AGENT_WORKDIR}; do not scaffold in the workspace root.
 - If the requested target directory may already exist and the user asked to recreate/regenerate, make that target directory clean before running a project scaffold command. Do not clean directories outside ${ODYSSEUS_AGENT_WORKDIR} or directories that contain .git.

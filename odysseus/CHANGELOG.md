@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.26
+
+- Make small-model verification stricter after successful build/test commands.
+  When the user explicitly requests HTTP routes such as `GET /tasks` or
+  `POST /tasks`, Odysseus Lite checks the real project source files before
+  marking the task complete. A build of an untouched scaffold template is no
+  longer enough.
+- Run project lifecycle Bash blocks in fail-fast mode when they scaffold,
+  build, test, lint, or typecheck. This prevents an earlier failed edit,
+  rename, or generated command from being hidden by a later successful build of
+  unrelated template code.
+- Recover `edit_file ... <<EOF` inside Bash blocks the same way as
+  `write_file ... <<EOF`, while still documenting that proper separate
+  `write_file`/`edit_file` tool blocks are preferred.
+
 ## 0.3.25
 
 - Add another small-model command normalization pass for non-interactive Agent

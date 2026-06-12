@@ -277,6 +277,16 @@ CLI mistakes generally: `dotnet new minimal-api` is mapped to the valid
 minimal web template, and project commands that reference `Project.csproj` from
 the parent directory are pointed at the scaffolded child project file.
 
+Version 0.3.26 makes completion checks stricter without hardcoding any sample
+project. If the user request explicitly names HTTP routes such as `GET /tasks`
+or `POST /tasks`, a successful build/test command must also be consistent with
+the real source files under the project workspace. This catches the common
+small-model failure mode where an untouched scaffold template builds
+successfully even though the requested routes were never implemented. Project
+lifecycle Bash blocks also run in fail-fast mode, so a failed edit, rename, or
+generated command cannot be hidden by a later successful build of unrelated
+template code.
+
 It also recovers this common malformed tool block:
 
 ````text
