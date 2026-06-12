@@ -58,6 +58,9 @@ they split navigation and execution into two tool calls.
 Odysseus Lite 0.3.9 keeps that fix compatible with older cached upstream
 Odysseus source layouts used by Home Assistant Docker builds.
 
+Odysseus Lite 0.3.10 makes that compatibility patch tolerant of minor
+`tool_execution.py` differences in cached Home Assistant Docker builds.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

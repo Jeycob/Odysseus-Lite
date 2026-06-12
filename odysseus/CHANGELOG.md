@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.10
+
+- Make the sticky Bash working-directory patch tolerate upstream
+  `tool_execution.py` differences so Home Assistant cached builds do not fail
+  on an optional `_call_mcp_tool` anchor.
+
 ## 0.3.9
 
 - Move sticky Bash working-directory handling into `src/tool_execution.py` so

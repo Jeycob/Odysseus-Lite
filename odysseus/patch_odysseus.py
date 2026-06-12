@@ -10,9 +10,17 @@ def patch_file(relative_path, replacements):
     path = ROOT / relative_path
     text = path.read_text(encoding="utf-8")
     changed = False
-    for old, new in replacements:
+    for replacement in replacements:
+        if len(replacement) == 2:
+            old, new = replacement
+            required = True
+        else:
+            old, new, required = replacement
         if old not in text:
-            raise SystemExit(f"Expected text not found in {relative_path}: {old!r}")
+            if required:
+                raise SystemExit(f"Expected text not found in {relative_path}: {old!r}")
+            print(f"[Odysseus Lite] Optional patch skipped in {relative_path}: {old[:80]!r}")
+            continue
         text = text.replace(old, new, 1)
         changed = True
     if changed:
@@ -158,6 +166,7 @@ patch_file(
             "        if cd_result:\n"
             "            return cd_result\n\n"
             "    server_id, tool_name = _MCP_TOOL_MAP[tool]\n",
+            False,
         ),
         (
             "    try:\n"
@@ -168,6 +177,7 @@ patch_file(
             "            if cd_result:\n"
             "                return cd_result\n"
             "        ctx = {\n",
+            False,
         ),
     ],
 )
