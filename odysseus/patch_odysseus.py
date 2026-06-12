@@ -223,6 +223,46 @@ patch_file(
             "        if line and not line.startswith(\"#\") and verify_re.search(line):\n"
             "            return line[:160]\n"
             "    return \"verification command\"\n\n\n"
+            "def _odysseus_lite_failure_hint(tool_type: str, command: str, result: Dict) -> str:\n"
+            "    if tool_type != \"bash\":\n"
+            "        return \"\"\n"
+            "    try:\n"
+            "        exit_code = int(result.get(\"exit_code\", 0))\n"
+            "    except (TypeError, ValueError):\n"
+            "        exit_code = 0\n"
+            "    if exit_code == 0:\n"
+            "        return \"\"\n"
+            "    cmd = command or \"\"\n"
+            "    out = \"\\n\".join(\n"
+            "        str(result.get(k, \"\"))\n"
+            "        for k in (\"output\", \"stdout\", \"stderr\", \"error\", \"results\", \"content\")\n"
+            "        if result.get(k) is not None\n"
+            "    )\n"
+            "    combined = f\"{cmd}\\n{out}\"\n"
+            "    hints: List[str] = []\n"
+            "    if re.search(r\"\\bdotnet\\b\", combined, re.IGNORECASE):\n"
+            "        if re.search(r\"dotnet:\\s+(?:command\\s+)?not\\s+found|dotnet: command not found\", combined, re.IGNORECASE):\n"
+            "            hints.append(\n"
+            "                \"Odysseus Lite hint: dotnet is missing from this Agent shell. \"\n"
+            "                \"Install the persistent SDK with `install-dotnet-sdk --channel 9.0`, \"\n"
+            "                \"then rerun `dotnet --info` and the build. Do not use apt-get, brew, \"\n"
+            "                \"Windows installers, or Windows PATH changes inside this Home Assistant add-on.\"\n"
+            "            )\n"
+            "        if \"Could not resolve SDK\" in combined and \".csproj\" in combined:\n"
+            "            hints.append(\n"
+            "                \"Odysseus Lite hint: this is invalid .csproj SDK metadata, not a missing OS package. \"\n"
+            "                \"Edit the project file `<Project Sdk=...>` to a valid installed SDK, such as \"\n"
+            "                \"`Microsoft.NET.Sdk.Web` for web/API apps or `Microsoft.NET.Sdk` for console/library apps, \"\n"
+            "                \"then rerun the build.\"\n"
+            "            )\n"
+            "    if re.search(r\"C:\\\\\\\\Program Files\\\\\\\\dotnet|C:Program\", combined, re.IGNORECASE):\n"
+            "        hints.append(\n"
+            "            \"Odysseus Lite hint: the Agent runs inside a Linux Home Assistant add-on, not Windows. \"\n"
+            "            \"Do not use `C:\\\\Program Files\\\\dotnet` paths; use `dotnet` from PATH after `install-dotnet-sdk`.\"\n"
+            "        )\n"
+            "    if not hints:\n"
+            "        return \"\"\n"
+            "    return \"\\n\\n\" + \"\\n\".join(dict.fromkeys(hints))\n\n\n"
             "def _odysseus_lite_last_user_text(messages: List[Dict]) -> str:\n"
             "    for msg in reversed(messages or []):\n"
             "        if msg.get(\"role\") == \"user\":\n"
@@ -714,6 +754,10 @@ patch_file(
             "                    else:\n"
             "                        _odysseus_lite_completed_verification = _success_label\n"
             "                        _odysseus_lite_stop_after_tool = True\n\n"
+            "                _failure_hint = _odysseus_lite_failure_hint(block.tool_type, block.content, result)\n"
+            "                if _failure_hint:\n"
+            "                    result = dict(result)\n"
+            "                    result[\"output\"] = (str(result.get(\"output\", \"\")) + _failure_hint).strip()\n\n"
             "            formatted = format_tool_result(desc, result)\n",
         ),
         (
@@ -1500,6 +1544,11 @@ def _translate_bash_pseudo_tools(content: str) -> str:
     """Recover common pseudo tool calls that small models put in Bash."""
     if not content:
         return content
+    content = re.sub(
+        r"(?m)(^|[;&|]\\s*)(?:/?share/odysseus-tools/)?install-dotnet-sdk\\b",
+        r"\\1install-dotnet-sdk",
+        content,
+    )
     content = _odysseus_lite_translate_quoted_file_tools(content)
     content = re.sub(
         r"(?m)^([ \\t]*)(?:write_file|edit_file|create_file)\\s+([^ \\t\\r\\n]+)\\s+<<",
@@ -1550,8 +1599,8 @@ def _translate_bash_pseudo_tools(content: str) -> str:
     return content, None, base_cwd
 ''',
             '''    run_cwd = _AGENT_SHELL_CWD if _AGENT_SHELL_CWD and os.path.isdir(_AGENT_SHELL_CWD) else base_cwd
-    if os.path.exists("/bin/bash") and not re.match(r"(?s)^\\s*/bin/bash\\s+-lc\\b", content):
-        content = "/bin/bash -lc " + shlex.quote(content)
+    if os.path.exists("/bin/bash") and not re.match(r"(?s)^\\s*/bin/bash\\s+-c\\b", content):
+        content = "/bin/bash -c " + shlex.quote(content)
     if run_cwd and os.path.isdir(run_cwd):
         return f"cd {shlex.quote(run_cwd)} &&\\n{content}", None, run_cwd
     return content, None, base_cwd

@@ -301,6 +301,32 @@ are translated into regular shell writes with parent directories created first.
 Recovered project shell blocks also run through Bash when it is available, so
 `source` and simple arrays behave as the model usually expects.
 
+Version 0.3.29 preserves the add-on Agent environment while doing that Bash
+recovery. This matters because a login shell can reset `PATH` and hide
+persistent tools installed under `/share/odysseus-tools`, even though the
+normal add-on shell can see them. It also normalizes common mistaken calls to
+the built-in persistent .NET helper, for example:
+
+```bash
+share/odysseus-tools/install-dotnet-sdk --channel 9.0
+```
+
+to:
+
+```bash
+install-dotnet-sdk --channel 9.0
+```
+
+These are still small-model Agent workarounds only. Larger models and ordinary
+chat/code examples are not rewritten unless the turn is clearly an action
+request involving real project files, dependencies, builds, or tests.
+
+When a small model still hits a .NET-specific failure, Odysseus Lite adds a
+short diagnostic to the tool result. For example, `dotnet: command not found`
+points back to `install-dotnet-sdk --channel 9.0`, while `Could not resolve
+SDK` points the model at the `.csproj` `Project Sdk` value instead of letting
+it drift into package-manager or Windows PATH instructions.
+
 It also recovers this common malformed tool block:
 
 ````text

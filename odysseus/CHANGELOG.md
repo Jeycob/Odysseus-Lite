@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.29
+
+- Preserve the add-on Agent environment when recovered small-model shell blocks
+  are executed with Bash. Version 0.3.28 used a login shell, which could reset
+  `PATH` and hide persistent user tools such as `/share/odysseus-tools/dotnet`.
+- Normalize common mistaken invocations of the persistent .NET helper, such as
+  `share/odysseus-tools/install-dotnet-sdk --channel 9.0`, back to the
+  executable `install-dotnet-sdk --channel 9.0` form.
+- Add targeted failure hints for small-model .NET Agent loops so a missing
+  `dotnet` command points back to the persistent helper, and invalid `.csproj`
+  SDK metadata points the model toward editing the project file instead of
+  reinstalling packages or trying Windows paths.
+- Keep both changes scoped to the small-model Agent compatibility layer and
+  project/dependency execution paths.
+
 ## 0.3.28
 
 - Expand small-model Bash recovery for project-generation loops. Pseudo file
