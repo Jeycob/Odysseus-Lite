@@ -357,6 +357,13 @@ configuration files and then rerun the failed verification. Long tool outputs
 are compacted before they go back into the small model context, preserving the
 useful beginning and error tail without flooding the next round.
 
+Version 0.3.34 catches a prose-only action response for small models. If the
+model writes a checklist, commands, or project steps but no executable tool
+block, Odysseus Lite rejects that inert round and asks for only real `bash`,
+`write_file`, or `edit_file` tool blocks. The detection is based on generic
+action/artifact intent and command-like guidance, not a specific framework or
+project name.
+
 It also recovers this common malformed tool block:
 
 ````text

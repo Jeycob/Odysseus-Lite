@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.34
+
+- Add a small-model Agent guard for action requests where the model writes a
+  prose checklist or command examples but no executable tool block. Odysseus
+  Lite now rejects that inert response and asks for only real `bash`,
+  `write_file`, or `edit_file` tool blocks.
+- Keep the guard stack-generic: it is triggered by action/artifact intent and
+  command-like guidance, not by a specific framework, model prompt, or project
+  name.
+
 ## 0.3.33
 
 - Treat failed build/test/lint/typecheck/smoke commands as an explicit

@@ -134,6 +134,12 @@ source, manifest, dependency, or config files and rerun the failed command. Long
 tool outputs are compacted before they are sent back to small local models, so
 verbose installer/build logs do not drown out the actionable error tail.
 
+Odysseus Lite 0.3.34 catches another small-model failure mode: an action request
+answered with a prose checklist or command examples, but no executable tool
+block. In that case the Agent gets another tool-only round and is told to use
+real `bash`, `write_file`, or `edit_file` blocks. The guard is stack-generic and
+not tied to .NET, MiniTasks, or a specific prompt.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance
