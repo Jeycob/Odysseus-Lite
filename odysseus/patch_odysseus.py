@@ -825,6 +825,39 @@ patch_file(
             "        block.content or \"\",\n"
             "        re.IGNORECASE,\n"
             "    ))\n\n\n"
+            "def _odysseus_lite_is_progress_block(block: ToolBlock) -> bool:\n"
+            "    content = block.content or \"\"\n"
+            "    if block.tool_type in {\"write_file\", \"edit_file\"}:\n"
+            "        return True\n"
+            "    if block.tool_type != \"bash\":\n"
+            "        return False\n"
+            "    return bool(_ODYSSEUS_LITE_SCAFFOLD_COMMAND_RE.search(content) or _ODYSSEUS_LITE_SOURCE_EDIT_COMMAND_RE.search(content))\n\n\n"
+            "def _odysseus_lite_requested_verification_blocks(text: str, existing: List[ToolBlock]) -> List[ToolBlock]:\n"
+            "    if not text:\n"
+            "        return []\n"
+            "    verify_re = re.compile(\n"
+            "        r\"\\b(dotnet\\s+(?:build|test|run|publish)|npm\\s+(?:test|run\\s+(?:build|test|lint|typecheck))|\"\n"
+            "        r\"pnpm\\s+(?:test|run\\s+(?:build|test|lint|typecheck))|yarn\\s+(?:test|build|lint|typecheck)|\"\n"
+            "        r\"pytest|python\\s+-m\\s+pytest|cargo\\s+(?:build|test|check)|go\\s+(?:build|test)|\"\n"
+            "        r\"mvn\\s+test|gradle\\s+test|make\\s+(?:build|test|check)|ruff\\s+check|eslint|tsc\\b|curl\\b|wget\\b)\",\n"
+            "        re.IGNORECASE,\n"
+            "    )\n"
+            "    existing_text = \"\\n\".join(block.content or \"\" for block in existing)\n"
+            "    blocks: List[ToolBlock] = []\n"
+            "    for raw_line in text.splitlines():\n"
+            "        line = raw_line.strip().strip(\"`\")\n"
+            "        if line.startswith((\"- \", \"* \")):\n"
+            "            line = line[2:].strip().strip(\"`\")\n"
+            "        if not line or line.startswith(\"#\") or not verify_re.search(line):\n"
+            "            continue\n"
+            "        if any(ch in line for ch in \"{}[]\"):\n"
+            "            continue\n"
+            "        if line in existing_text:\n"
+            "            continue\n"
+            "        blocks.append(ToolBlock(\"bash\", line))\n"
+            "        if len(blocks) >= 2:\n"
+            "            break\n"
+            "    return blocks\n\n\n"
             "def _odysseus_lite_insert_declared_file_blocks(tool_blocks: List[ToolBlock], file_blocks: List[ToolBlock]) -> List[ToolBlock]:\n"
             "    if not file_blocks:\n"
             "        return tool_blocks\n"
@@ -871,6 +904,21 @@ patch_file(
             "                        len(_declared_file_blocks),\n"
             "                    )\n"
             "                    tool_blocks = _odysseus_lite_insert_declared_file_blocks(tool_blocks, _declared_file_blocks)\n"
+            "                    used_native = False\n"
+            "            if (_odysseus_lite_action_artifact\n"
+            "                    and tool_blocks\n"
+            "                    and not any(_odysseus_lite_is_verification_block(block) for block in tool_blocks)\n"
+            "                    and any(_odysseus_lite_is_progress_block(block) for block in tool_blocks)):\n"
+            "                _requested_verify_blocks = _odysseus_lite_requested_verification_blocks(\n"
+            "                    _odysseus_lite_original,\n"
+            "                    tool_blocks,\n"
+            "                )\n"
+            "                if _requested_verify_blocks:\n"
+            "                    logger.info(\n"
+            "                        \"[odysseus-lite] appended %s requested verification tool block(s)\",\n"
+            "                        len(_requested_verify_blocks),\n"
+            "                    )\n"
+            "                    tool_blocks.extend(_requested_verify_blocks)\n"
             "                    used_native = False\n"
             "        if not tool_blocks and not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n"
             "            _odysseus_lite_original = _verifier_instruction or \"\"\n"
@@ -1233,6 +1281,57 @@ patch_file(
             "    roots.append(_AGENT_WORKDIR)\n"
             "    if os.path.realpath(_AGENT_WORKDIR) != os.path.realpath(DATA_DIR):\n"
             "        roots.append(DATA_DIR)\n",
+        ),
+    ],
+)
+
+patch_file(
+    "src/tool_execution.py",
+    [
+        (
+            "def _parse_write_file(content: str) -> Dict:\n"
+            "    lines = content.split(\"\\n\", 1)\n"
+            "    return {\"path\": lines[0].strip(), \"content\": lines[1] if len(lines) > 1 else \"\"}\n",
+            "def _odysseus_lite_write_file_echo_issue(content: str) -> str:\n"
+            "    args = _parse_write_file(content)\n"
+            "    path = args.get(\"path\", \"\")\n"
+            "    body = str(args.get(\"content\", \"\")).strip()\n"
+            "    if not path or not body:\n"
+            "        return \"\"\n"
+            "    source_exts = {\n"
+            "        \".cs\", \".js\", \".jsx\", \".ts\", \".tsx\", \".py\", \".go\", \".rs\", \".java\",\n"
+            "        \".kt\", \".php\", \".rb\", \".html\", \".css\", \".json\", \".xml\", \".yaml\",\n"
+            "        \".yml\", \".toml\", \".sql\", \".sh\", \".md\", \".txt\",\n"
+            "    }\n"
+            "    if pathlib.Path(path).suffix.lower() not in source_exts:\n"
+            "        return \"\"\n"
+            "    if re.fullmatch(r\"(?is)(build|test|tests|lint|typecheck|smoke)\\s+(succeeded|successful|passed|failed)\\.?\", body):\n"
+            "        return \"write_file content looks like a verification status, not source code. Run the verification command in bash instead.\"\n"
+            "    if re.search(r\"(?s)^\\s*\\{\\s*['\\\"]diff['\\\"]\\s*:\", body) and re.search(r\"(?s)['\\\"]text['\\\"]\\s*:\\s*['\\\"]---\\s+a/\", body):\n"
+            "        return \"write_file content looks like a previous tool diff/output echo, not source code. Reconstruct the intended source file instead.\"\n"
+            "    if body.startswith((\"--- a/\", \"diff --git \")) or re.search(r\"(?m)^@@\\s+-\\d+(?:,\\d+)?\\s+\\+\\d+(?:,\\d+)?\\s+@@\", body):\n"
+            "        return \"write_file content looks like a patch/diff, not the complete target file. Write the final file contents or use edit_file.\"\n"
+            "    return \"\"\n\n\n"
+            "def _parse_write_file(content: str) -> Dict:\n"
+            "    lines = content.split(\"\\n\", 1)\n"
+            "    return {\"path\": lines[0].strip(), \"content\": lines[1] if len(lines) > 1 else \"\"}\n",
+        ),
+        (
+            "    # Route MCP-extracted tools through the MCP manager. Forward\n"
+            "    # the progress callback so long-running subprocess tools\n"
+            "    # (bash, python) can stream `tool_progress` events to the UI.\n"
+            "    if tool in _MCP_TOOL_MAP:\n",
+            "    if tool == \"write_file\":\n"
+            "        _echo_issue = _odysseus_lite_write_file_echo_issue(content)\n"
+            "        if _echo_issue:\n"
+            "            desc = \"write_file: rejected tool-output echo\"\n"
+            "            result = {\"error\": _echo_issue, \"exit_code\": 1}\n"
+            "            logger.warning(\"Rejected suspicious write_file content for small-model recovery: %s\", _echo_issue)\n"
+            "            return desc, result\n\n"
+            "    # Route MCP-extracted tools through the MCP manager. Forward\n"
+            "    # the progress callback so long-running subprocess tools\n"
+            "    # (bash, python) can stream `tool_progress` events to the UI.\n"
+            "    if tool in _MCP_TOOL_MAP:\n",
         ),
     ],
 )
@@ -1939,6 +2038,44 @@ def _odysseus_lite_normalize_simple_bash_assignments(content: str) -> str:
     return "\\n".join(out) if changed else content
 
 
+def _odysseus_lite_drop_shell_transcript_outputs(content: str) -> str:
+    """Remove obvious pasted command output from small-model Bash blocks."""
+    lines = content.splitlines()
+    out = []
+    changed = False
+    i = 0
+    command_re = re.compile(
+        r"^(?:cd|pwd|ls|find|cat|sed|grep|rg|mkdir|dotnet|npm|pnpm|yarn|python3?|pip3?|"
+        r"cargo|go|mvn|gradle|make|git|curl|wget|install-[\\w-]+)\\b"
+    )
+    while i < len(lines):
+        raw_line = lines[i]
+        stripped = raw_line.strip()
+        if stripped == "pwd" and i + 1 < len(lines):
+            next_line = lines[i + 1].strip()
+            if next_line.startswith("/") and os.path.isdir(next_line):
+                out.append("cd " + shlex.quote(next_line))
+                changed = True
+                i += 2
+                continue
+        out.append(raw_line)
+        if stripped == "ls":
+            i += 1
+            while i < len(lines):
+                candidate = lines[i].strip()
+                if not candidate:
+                    out.append(lines[i])
+                    i += 1
+                    break
+                if command_re.search(candidate) or candidate.startswith("#"):
+                    break
+                changed = True
+                i += 1
+            continue
+        i += 1
+    return "\\n".join(out) if changed else content
+
+
 def _translate_bash_pseudo_tools(content: str) -> str:
     """Recover common pseudo tool calls that small models put in Bash."""
     if not content:
@@ -1956,6 +2093,7 @@ def _translate_bash_pseudo_tools(content: str) -> str:
     )
     content = re.sub(r"(?m)(^|[ \\t])\\.\\\\(?=[^ \\t\\r\\n;&|]+)", r"\\1./", content)
     content = _odysseus_lite_normalize_simple_bash_assignments(content)
+    content = _odysseus_lite_drop_shell_transcript_outputs(content)
 
     fixed_lines = []
     for raw_line in content.splitlines():

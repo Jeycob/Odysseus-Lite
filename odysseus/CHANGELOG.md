@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.35
+
+- When a small model edits or scaffolds files but skips an explicit
+  verification command from the user request, Odysseus Lite now appends that
+  requested build/test/lint/smoke command to the same tool round.
+- Reject suspicious `write_file` calls that try to write previous tool
+  diffs, JSON diff metadata, or plain verification status text into source
+  files. The model gets an actionable error instead of corrupting the project.
+- Normalize obvious shell transcript lines in Bash blocks, such as pasted `pwd`
+  output and `ls` listings, so they are not executed as commands.
+
 ## 0.3.34
 
 - Add a small-model Agent guard for action requests where the model writes a

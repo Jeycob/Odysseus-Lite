@@ -140,6 +140,13 @@ block. In that case the Agent gets another tool-only round and is told to use
 real `bash`, `write_file`, or `edit_file` blocks. The guard is stack-generic and
 not tied to .NET, MiniTasks, or a specific prompt.
 
+Odysseus Lite 0.3.35 makes verification more deterministic for small models. If
+the request explicitly includes a build/test/lint/smoke command and the model
+edits or scaffolds files but skips that command, Odysseus Lite appends it to the
+same tool round. It also rejects source writes that are clearly pasted tool
+diffs or status text, preventing a model from corrupting files with its own
+previous output.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

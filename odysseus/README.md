@@ -364,6 +364,13 @@ block, Odysseus Lite rejects that inert round and asks for only real `bash`,
 action/artifact intent and command-like guidance, not a specific framework or
 project name.
 
+Version 0.3.35 adds deterministic verification recovery. When a small model
+edits or scaffolds files but omits an explicit verification command from the
+request, Odysseus Lite appends that build/test/lint/smoke command to the same
+tool round. It also protects source files from pasted tool-output echoes such as
+JSON diff metadata or bare `Build succeeded.` text, and normalizes obvious
+shell transcript lines before Bash execution.
+
 It also recovers this common malformed tool block:
 
 ````text
