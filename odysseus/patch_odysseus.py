@@ -2528,3 +2528,115 @@ patch_file(
         ),
     ],
 )
+
+patch_file(
+    "src/agent_loop.py",
+    [
+        (
+            "def _odysseus_lite_is_verification_block(block: ToolBlock) -> bool:\n",
+            "def _odysseus_lite_write_file_content_issue(content: str) -> str:\n"
+            "    lines = (content or \"\").split(\"\\n\", 1)\n"
+            "    path = lines[0].strip() if lines else \"\"\n"
+            "    body = lines[1] if len(lines) > 1 else \"\"\n"
+            "    if not path or not body.strip():\n"
+            "        return \"\"\n"
+            "    suffix = os.path.splitext(path)[1].lower()\n"
+            "    body_lstripped = body.lstrip()\n"
+            "    project_exts = {\".csproj\", \".fsproj\", \".vbproj\"}\n"
+            "    source_exts = {\n"
+            "        \".cs\", \".fs\", \".vb\", \".js\", \".jsx\", \".ts\", \".tsx\", \".py\", \".go\",\n"
+            "        \".rs\", \".java\", \".kt\", \".php\", \".rb\", \".html\", \".css\", \".sh\",\n"
+            "    }\n"
+            "    project_xml = re.match(r\"(?is)^(?:<\\?xml[^>]*>\\s*)?<Project\\s+Sdk=\", body_lstripped)\n"
+            "    if project_xml and suffix not in project_exts:\n"
+            "        return (\n"
+            "            \"write_file content is a .NET project manifest XML, but the target path is not a project manifest. \"\n"
+            "            \"Write project XML only to .csproj/.fsproj/.vbproj files. Source files such as .cs must contain source code.\"\n"
+            "        )\n"
+            "    if suffix in project_exts and not project_xml:\n"
+            "        code_like = re.search(r\"(?m)^\\s*(using\\s+|namespace\\s+|class\\s+|public\\s+|var\\s+|def\\s+|function\\s+)\", body_lstripped)\n"
+            "        if code_like:\n"
+            "            return (\n"
+            "                \"write_file target is a project manifest, but the content looks like source code. \"\n"
+            "                \"Put source code in a source file and keep manifest XML in the project file.\"\n"
+            "            )\n"
+            "    if suffix in source_exts and re.match(r\"(?is)^<\\s*(Project|PropertyGroup|ItemGroup|PackageReference)\\b\", body_lstripped):\n"
+            "        return (\n"
+            "            \"write_file target has a source-code extension, but the content starts with project/manifest XML. \"\n"
+            "            \"Use the proper manifest file or remove this generated source file before building.\"\n"
+            "        )\n"
+            "    return \"\"\n\n\n"
+            "def _odysseus_lite_bash_request_mismatch_issue(messages: List[Dict], content: str) -> str:\n"
+            "    request = _odysseus_lite_last_user_text(messages)\n"
+            "    if not request or not content:\n"
+            "        return \"\"\n"
+            "    request_web_like = bool(\n"
+            "        _odysseus_lite_requested_http_routes(request)\n"
+            "        or re.search(r\"\\b(web\\s*api|api|http|endpoint|route|server|asp\\.?net\\s+core\\s+(?:web|api))\\b\", request, re.IGNORECASE)\n"
+            "    )\n"
+            "    if request_web_like and re.search(r\"(?m)^\\s*dotnet\\s+new\\s+console\\b\", content, re.IGNORECASE):\n"
+            "        return (\n"
+            "            \"The user requested a web/API/server artifact, but this bash block scaffolds a .NET console template. \"\n"
+            "            \"Use an appropriate web/API scaffold such as `dotnet new web` or `dotnet new webapi`, then verify the requested routes.\"\n"
+            "        )\n"
+            "    return \"\"\n\n\n"
+            "def _odysseus_lite_tool_preflight_issue(messages: List[Dict], block: ToolBlock) -> str:\n"
+            "    if block.tool_type == \"write_file\":\n"
+            "        return _odysseus_lite_write_file_content_issue(block.content or \"\")\n"
+            "    if block.tool_type == \"bash\":\n"
+            "        return _odysseus_lite_bash_request_mismatch_issue(messages, block.content or \"\")\n"
+            "    return \"\"\n\n\n"
+            "def _odysseus_lite_is_verification_block(block: ToolBlock) -> bool:\n",
+            False,
+        ),
+        (
+            "            if tool_policy and tool_policy.blocks(block.tool_type):\n"
+            "                desc = f\"{block.tool_type}: BLOCKED\"\n"
+            "                result = {\n"
+            "                    \"error\": tool_policy.reason_for(block.tool_type),\n"
+            "                    \"exit_code\": 1,\n"
+            "                    \"blocked\": True,\n"
+            "                }\n"
+            "                logger.info(\"Tool blocked before start by policy: %s\", block.tool_type)\n",
+            "            _odysseus_lite_preflight_issue = \"\"\n"
+            "            if _odysseus_lite_action_recovery_enabled(model):\n"
+            "                _odysseus_lite_preflight_issue = _odysseus_lite_tool_preflight_issue(messages, block)\n\n"
+            "            if _odysseus_lite_preflight_issue:\n"
+            "                desc = f\"{block.tool_type}: rejected small-model preflight\"\n"
+            "                result = {\"error\": _odysseus_lite_preflight_issue, \"exit_code\": 1}\n"
+            "                logger.warning(\"Odysseus Lite rejected small-model tool block before execution: %s\", _odysseus_lite_preflight_issue)\n"
+            "            elif tool_policy and tool_policy.blocks(block.tool_type):\n"
+            "                desc = f\"{block.tool_type}: BLOCKED\"\n"
+            "                result = {\n"
+            "                    \"error\": tool_policy.reason_for(block.tool_type),\n"
+            "                    \"exit_code\": 1,\n"
+            "                    \"blocked\": True,\n"
+            "                }\n"
+            "                logger.info(\"Tool blocked before start by policy: %s\", block.tool_type)\n",
+            False,
+        ),
+        (
+            "        if re.search(r\"The type or namespace name '[^']+' could not be found\", combined, re.IGNORECASE):\n"
+            "            hints.append(\n"
+            "                \"Odysseus Lite hint: missing namespace/type errors usually mean the source references a package, framework, or using that is not in the project. \"\n"
+            "                \"Prefer removing invented dependencies and simplifying the implementation before adding packages.\"\n"
+            "            )\n",
+            "        if re.search(r\"The type or namespace name '[^']+' could not be found\", combined, re.IGNORECASE):\n"
+            "            hints.append(\n"
+            "                \"Odysseus Lite hint: missing namespace/type errors usually mean the source references a package, framework, or using that is not in the project. \"\n"
+            "                \"Prefer removing invented dependencies and simplifying the implementation before adding packages.\"\n"
+            "            )\n"
+            "        if re.search(r\"\\.cs\\(\\d+,\\d+\\): error CS1525: Invalid expression term '<'\", combined, re.IGNORECASE):\n"
+            "            hints.append(\n"
+            "                \"Odysseus Lite hint: a C# source file appears to contain XML/markup instead of C# code. \"\n"
+            "                \"Delete or rewrite that source file. Project XML belongs in .csproj/.fsproj/.vbproj files only, then rerun the build.\"\n"
+            "            )\n"
+            "        if re.search(r\"error CS(?:1002|1003|0103|0246)\", combined, re.IGNORECASE) and re.search(r\"\\b(FromBody|Json\\s*\\(|Ok\\s*\\(|Results\\.)\", combined):\n"
+            "            hints.append(\n"
+            "                \"Odysseus Lite hint: this looks like ASP.NET minimal API source syntax, not a missing SDK. \"\n"
+            "                \"Use a Web SDK project, keep source simple, prefer `Results.Ok(...)`/`Results.Json(...)`, and rerun the exact build command.\"\n"
+            "            )\n",
+            False,
+        ),
+    ],
+)

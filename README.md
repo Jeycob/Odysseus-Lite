@@ -150,6 +150,12 @@ previous output.
 Odysseus Lite 0.3.36 fixes the auto-verification helper from 0.3.35 so it runs
 without relying on Agent-loop local regex variables.
 
+Odysseus Lite 0.3.37 adds small-model preflight checks for project file hygiene.
+If the request is for a web/API/server artifact, a console-only scaffold is
+rejected before it runs. It also rejects project manifest XML written into
+source files, and source-like content written into manifest files, so the model
+must correct the real project files before build verification.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.37
+
+- Add a small-model preflight guard for project/tool mismatch errors. When a
+  user asks for a web/API/server artifact, a `.NET console` scaffold is
+  rejected before execution with a targeted instruction to use a web/API
+  template.
+- Reject project manifest XML written into source files, and source-like
+  content written into project manifests. The guard is generic for project
+  file hygiene and prevents small models from corrupting build inputs before
+  verification.
+- Add failed-build hints for source/manifest mixups so small local models fix
+  files after a build error instead of reinstalling SDKs or repeating generic
+  troubleshooting.
+
 ## 0.3.36
 
 - Fix the 0.3.35 auto-verification helper so it is self-contained in the

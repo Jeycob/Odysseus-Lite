@@ -391,6 +391,16 @@ npm test
 ```
 ````
 
+Version 0.3.37 adds preflight checks for two common small-model project
+mistakes. If the user asked for a web app, API, HTTP server, endpoint, or route,
+a console-only scaffold is rejected before it runs and the model is pointed back
+to an appropriate web/API-capable template for the requested stack. The same
+guard also keeps manifest/config artifacts separate from source artifacts: for
+example, project XML must be written to project manifest files, not copied into
+source-code files. If a build later reports source/manifest mixups, Odysseus
+Lite adds a short hint so the model fixes files instead of reinstalling tools or
+repeating a checklist.
+
 Useful prompt for small local models:
 
 ```text

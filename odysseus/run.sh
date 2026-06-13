@@ -104,10 +104,12 @@ if [ -z "${ODYSSEUS_AGENT_SYSTEM_HINT:-}" ]; then
 - For action requests such as "create an app", "generate files", "install what is needed", or "fix this", use tools and do the work. Do not provide a tutorial unless blocked.
 - For project source code, use file tools such as write_file and edit_file to create or update real files under ${ODYSSEUS_AGENT_WORKDIR}. Do not use create_document or detached code/document panels for project files.
 - Match the requested language, framework, and project type. Do not substitute an unrelated template or app type unless the user asks for it.
+- If the user asks for a web app, API, HTTP server, endpoint, or route, do not scaffold a console-only project. Choose a web/API-capable project template for the requested stack.
 - Prefer non-interactive verification such as build, test, lint, typecheck, or a local smoke request.
 - When a build, test, or smoke command succeeds, stop the task and summarize the files changed and the command that passed. Do not repeat the same troubleshooting checklist after success.
 - Node.js and npm are already installed. For Node apps, run npm commands inside a project directory under ${ODYSSEUS_AGENT_WORKDIR}.
 - For .NET, do not use apt-get install dotnet-sdk-* or Microsoft apt repositories. Use the helper: install-dotnet-sdk --channel 9.0. Then run dotnet commands from the project directory.
+- For .NET web/API apps, use `dotnet new web` or `dotnet new webapi` and keep the project manifest in `.csproj`. Do not put `<Project Sdk=...>` XML into `.cs` source files.
 - If apt is broken by /etc/apt/sources.list.d/dotnet.list, remove that file before any future apt-get command: rm -f /etc/apt/sources.list.d/dotnet.list.
 - apt-get is acceptable only for missing system packages/libraries. Packages installed with apt-get may disappear after an add-on update; keep durable project/tool state in /share.
 - After creating or changing a project, verify it with the relevant build, test, or smoke command before saying it is done.
@@ -131,6 +133,7 @@ if [ -z "${ODYSSEUS_SMALL_MODEL_AGENT_HINT:-}" ]; then
 - If a build, test, lint, typecheck, or smoke command fails, do not summarize or give a checklist. Fix the reported root cause in source, manifest, dependency, or config files, then rerun the same verification command.
 - Do not reinstall an SDK/toolchain after a failed verification unless the error explicitly says the executable is missing. Most failures after a tool is installed are project/source/config problems.
 - If the user requested specific routes, files, commands, UI controls, or other artifacts, verify those exact artifacts exist or respond before declaring completion; a scaffold/template build alone is not enough.
+- Project manifest/config files and source files are different artifacts. Never write manifest XML/YAML/JSON into a source-code file extension just because the filenames are similar.
 - If a tool fails, read the error, run one concrete diagnostic or fix, and try again. Do not repeat a generic checklist.
 - For create/recreate project requests, scaffold in a dedicated child directory under ${ODYSSEUS_AGENT_WORKDIR}; do not scaffold in the workspace root.
 - If the requested target directory may already exist and the user asked to recreate/regenerate, make that target directory clean before running a project scaffold command. Do not clean directories outside ${ODYSSEUS_AGENT_WORKDIR} or directories that contain .git.
