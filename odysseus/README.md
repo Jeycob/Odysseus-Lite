@@ -371,6 +371,9 @@ tool round. It also protects source files from pasted tool-output echoes such as
 JSON diff metadata or bare `Build succeeded.` text, and normalizes obvious
 shell transcript lines before Bash execution.
 
+Version 0.3.36 fixes the 0.3.35 auto-verification helper so it does not depend
+on regex variables local to the Agent-loop function.
+
 It also recovers this common malformed tool block:
 
 ````text

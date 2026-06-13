@@ -147,6 +147,9 @@ same tool round. It also rejects source writes that are clearly pasted tool
 diffs or status text, preventing a model from corrupting files with its own
 previous output.
 
+Odysseus Lite 0.3.36 fixes the auto-verification helper from 0.3.35 so it runs
+without relying on Agent-loop local regex variables.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

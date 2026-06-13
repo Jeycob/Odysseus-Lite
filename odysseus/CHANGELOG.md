@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.36
+
+- Fix the 0.3.35 auto-verification helper so it is self-contained in the
+  patched Agent loop. The previous version could raise a `NameError` when a
+  small model produced progress tool blocks.
+
 ## 0.3.35
 
 - When a small model edits or scaffolds files but skips an explicit
