@@ -128,6 +128,12 @@ For common project stacks it also checks for the expected manifest, such as
 `.csproj`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, or Gradle build
 files, so loose source snippets are not mistaken for a complete project.
 
+Odysseus Lite 0.3.33 also treats a failed verification command as structured
+small-model state. The next Agent round is told to fix the real root cause in
+source, manifest, dependency, or config files and rerun the failed command. Long
+tool outputs are compacted before they are sent back to small local models, so
+verbose installer/build logs do not drown out the actionable error tail.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.33
+
+- Treat failed build/test/lint/typecheck/smoke commands as an explicit
+  small-model Agent state. Odysseus Lite now tells the model to fix the root
+  cause in real source, manifest, dependency, or configuration files and rerun
+  the failed verification command instead of accepting a prose summary.
+- Compact long tool outputs before feeding them back to small models. This keeps
+  verbose installer/build logs from overwhelming the next Agent round while
+  preserving the important beginning and tail of the output.
+- Add stack-generic recovery hints for common project failures, including
+  non-persistent `cd` assumptions, missing project files, and source/framework
+  mismatches such as web/API code in a non-web project manifest.
+
 ## 0.3.32
 
 - Tighten small-model Agent completion checks after recovered source writes.

@@ -350,6 +350,13 @@ project manifests for common stacks, including `.csproj`/`.sln`,
 Recovered source snippets are written to disk only; redundant `create_document`
 blocks are dropped so project code does not end up in inert editor documents.
 
+Version 0.3.33 adds a failed-verification guard for the same small-model path.
+If a build, test, lint, typecheck, or smoke command fails, the next Agent round
+is steered back to executable tools that fix source, manifest, dependency, or
+configuration files and then rerun the failed verification. Long tool outputs
+are compacted before they go back into the small model context, preserving the
+useful beginning and error tail without flooding the next round.
+
 It also recovers this common malformed tool block:
 
 ````text
