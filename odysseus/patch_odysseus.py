@@ -53,6 +53,7 @@ patch_file(
             "        budget_hit = False\n"
             "        _odysseus_lite_round_had_scaffold = False\n"
             "        _odysseus_lite_round_had_source_edit = False\n"
+            "        _odysseus_lite_round_had_verification = False\n"
             "        _odysseus_lite_scaffold_only_verification = False\n"
             "        _odysseus_lite_completion_issue_text = \"\"\n",
             False,
@@ -71,6 +72,8 @@ patch_file(
             "                _block_content = block.content or \"\"\n"
             "                if block.tool_type == \"bash\" and _ODYSSEUS_LITE_SCAFFOLD_COMMAND_RE.search(_block_content):\n"
             "                    _odysseus_lite_round_had_scaffold = True\n"
+            "                if _odysseus_lite_is_verification_block(block):\n"
+            "                    _odysseus_lite_round_had_verification = True\n"
             "                if block.tool_type in {\"write_file\", \"edit_file\", \"update_document\", \"edit_document\"}:\n"
             "                    _odysseus_lite_round_had_source_edit = True\n"
             "                elif block.tool_type == \"bash\" and _ODYSSEUS_LITE_SOURCE_EDIT_COMMAND_RE.search(_block_content):\n"
@@ -375,6 +378,51 @@ patch_file(
             "    missing = [f\"{method} {path}\" for method, path in requested if not _odysseus_lite_route_present(source_text, method, path)]\n"
             "    if missing:\n"
             "        return \"requested HTTP routes are missing from source files after verification: \" + \", \".join(missing)\n"
+            "    return \"\"\n\n\n"
+            "def _odysseus_lite_manifest_exists(root: str, names: List[str]) -> bool:\n"
+            "    if not root or not os.path.isdir(root):\n"
+            "        return False\n"
+            "    skip_dirs = {'bin', 'obj', 'node_modules', '.git', '.venv', 'venv', 'dist', 'build', 'target'}\n"
+            "    for dirpath, dirnames, filenames in os.walk(root):\n"
+            "        dirnames[:] = [d for d in dirnames if d not in skip_dirs]\n"
+            "        depth = os.path.relpath(dirpath, root).count(os.sep)\n"
+            "        if depth > 5:\n"
+            "            dirnames[:] = []\n"
+            "            continue\n"
+            "        for pattern in names:\n"
+            "            if pattern.startswith('*.'):\n"
+            "                suffix = pattern[1:].lower()\n"
+            "                if any(name.lower().endswith(suffix) for name in filenames):\n"
+            "                    return True\n"
+            "            elif pattern in filenames:\n"
+            "                return True\n"
+            "    return False\n\n\n"
+            "def _odysseus_lite_project_manifest_issue(messages: List[Dict]) -> str:\n"
+            "    request = _odysseus_lite_last_user_text(messages)\n"
+            "    if not request or not re.search(r\"\\b(create|recreate|generate|scaffold|build|fix|install|write|edit|make|implement|add|update|modify|run|test|lint|typecheck)\\b\", request, re.IGNORECASE):\n"
+            "        return \"\"\n"
+            "    root = _odysseus_lite_request_workspace_root(request)\n"
+            "    checks = [\n"
+            "        (r\"\\b(dotnet|asp\\.?net|csharp|c#|\\.csproj|\\.sln)\\b\", ['*.csproj', '*.sln'], '.NET'),\n"
+            "        (r\"\\b(node|npm|pnpm|yarn|vite|react|vue|svelte|next\\.?js|express|package\\.json)\\b\", ['package.json'], 'Node'),\n"
+            "        (r\"\\b(go\\s+(?:app|api|module|project)|go\\.mod|golang)\\b\", ['go.mod'], 'Go'),\n"
+            "        (r\"\\b(rust|cargo|Cargo\\.toml)\\b\", ['Cargo.toml'], 'Rust'),\n"
+            "        (r\"\\b(maven|pom\\.xml)\\b\", ['pom.xml'], 'Maven'),\n"
+            "        (r\"\\b(gradle|build\\.gradle)\\b\", ['build.gradle', 'build.gradle.kts'], 'Gradle'),\n"
+            "    ]\n"
+            "    for pattern, names, label in checks:\n"
+            "        if re.search(pattern, request, re.IGNORECASE):\n"
+            "            if not _odysseus_lite_manifest_exists(root, names):\n"
+            "                return f\"requested {label} project has no manifest file ({', '.join(names)}) under {root}\"\n"
+            "            return \"\"\n"
+            "    return \"\"\n\n\n"
+            "def _odysseus_lite_unverified_progress_issue(messages: List[Dict]) -> str:\n"
+            "    manifest_issue = _odysseus_lite_project_manifest_issue(messages)\n"
+            "    if manifest_issue:\n"
+            "        return manifest_issue\n"
+            "    request = _odysseus_lite_last_user_text(messages)\n"
+            "    if re.search(r\"\\b(build|test|verify|run|lint|typecheck|smoke)\\b\", request or \"\", re.IGNORECASE):\n"
+            "        return \"files or scaffolding changed, but no successful build/test/smoke verification was run\"\n"
             "    return \"\"\n\n\n"
             "def _odysseus_lite_recover_prefixed_tool_blocks(text: str, disabled_tools: Optional[set] = None) -> List[ToolBlock]:\n"
             "    \"\"\"Recover untagged fences whose first line is a tool name.\n\n"
@@ -713,20 +761,21 @@ patch_file(
             "def _odysseus_lite_insert_declared_file_blocks(tool_blocks: List[ToolBlock], file_blocks: List[ToolBlock]) -> List[ToolBlock]:\n"
             "    if not file_blocks:\n"
             "        return tool_blocks\n"
-            "    insert_at = len(tool_blocks)\n"
-            "    for idx, block in enumerate(tool_blocks):\n"
+            "    filtered_blocks = [block for block in tool_blocks if block.tool_type != \"create_document\"]\n"
+            "    insert_at = len(filtered_blocks)\n"
+            "    for idx, block in enumerate(filtered_blocks):\n"
             "        if _odysseus_lite_is_verification_block(block):\n"
             "            insert_at = idx\n"
             "            break\n"
             "    existing = {\n"
             "        (block.content or \"\").split(\"\\n\", 1)[0].strip()\n"
-            "        for block in tool_blocks\n"
+            "        for block in filtered_blocks\n"
             "        if block.tool_type == \"write_file\"\n"
             "    }\n"
             "    additions = [block for block in file_blocks if (block.content or \"\").split(\"\\n\", 1)[0].strip() not in existing]\n"
             "    if not additions:\n"
-            "        return tool_blocks\n"
-            "    return tool_blocks[:insert_at] + additions + tool_blocks[insert_at:]\n\n\n"
+            "        return filtered_blocks\n"
+            "    return filtered_blocks[:insert_at] + additions + filtered_blocks[insert_at:]\n\n\n"
             "def _load_mcp_disabled_map() -> Dict[str, set]:\n",
             False,
         ),
@@ -767,6 +816,36 @@ patch_file(
 )
 
 patch_file(
+    "src/agent_loop.py",
+    [
+        (
+            "        _parse_response = round_response\n"
+            "        if not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n",
+            "        _parse_response = round_response\n"
+            "        _odysseus_lite_recovered_declared_files = False\n"
+            "        if not _force_answer and _odysseus_lite_action_recovery_enabled(model):\n",
+            False,
+        ),
+        (
+            "                    tool_blocks = _odysseus_lite_insert_declared_file_blocks(tool_blocks, _declared_file_blocks)\n"
+            "                    used_native = False\n",
+            "                    tool_blocks = _odysseus_lite_insert_declared_file_blocks(tool_blocks, _declared_file_blocks)\n"
+            "                    _odysseus_lite_recovered_declared_files = True\n"
+            "                    used_native = False\n",
+            False,
+        ),
+        (
+            "        if not has_doc_tool and session_id and \"create_document\" not in (disabled_tools or set()):\n",
+            "        if (not _odysseus_lite_recovered_declared_files\n"
+            "                and not has_doc_tool\n"
+            "                and session_id\n"
+            "                and \"create_document\" not in (disabled_tools or set())):\n",
+            False,
+        ),
+    ],
+)
+
+patch_file(
     "routes/chat_routes.py",
     [
         (
@@ -783,7 +862,7 @@ patch_file(
             "    _MAX_INTENT_NUDGES = 2\n\n"
             "    # \"I said I would, then didn't\" detector.",
             "    _MAX_INTENT_NUDGES = 2\n"
-            "    _ODYSSEUS_LITE_MAX_FALSE_DONE_NUDGES = 2\n"
+            "    _ODYSSEUS_LITE_MAX_FALSE_DONE_NUDGES = 4\n"
             "    _odysseus_lite_false_done_nudges = 0\n"
             "    _odysseus_lite_completed_verification = \"\"\n"
             "    _odysseus_lite_stop_after_tool = False\n"
@@ -956,6 +1035,17 @@ patch_file(
         (
             "        # Feed results back to LLM for next round\n"
             "        _append_tool_results(messages, round_response, native_tool_calls,\n",
+            "        if (\n"
+            "            _odysseus_lite_action_recovery_enabled(model)\n"
+            "            and not _odysseus_lite_completed_verification\n"
+            "            and not _odysseus_lite_scaffold_only_verification\n"
+            "            and (_odysseus_lite_round_had_source_edit or _odysseus_lite_round_had_scaffold)\n"
+            "            and not _odysseus_lite_round_had_verification\n"
+            "        ):\n"
+            "            _unverified_issue = _odysseus_lite_unverified_progress_issue(messages)\n"
+            "            if _unverified_issue:\n"
+            "                _odysseus_lite_scaffold_only_verification = True\n"
+            "                _odysseus_lite_completion_issue_text = _unverified_issue\n\n"
             "        if _odysseus_lite_scaffold_only_verification:\n"
             "            _workspace = os.getenv(\"ODYSSEUS_AGENT_WORKDIR\", \"/share/odysseus-workspace\")\n"
             "            _issue = _odysseus_lite_completion_issue_text or \"the last successful build only proved a freshly scaffolded template\"\n"
@@ -963,7 +1053,7 @@ patch_file(
             "            messages.append({\n"
             "                \"role\": \"system\",\n"
             "                \"content\": (\n"
-            "                    f\"Odysseus Lite detected incomplete work after a successful verification command: {_issue}. \"\n"
+            "                    f\"Odysseus Lite detected incomplete work: {_issue}. \"\n"
             "                    \"Do not summarize completion yet. Continue with executable tools only. \"\n"
             "                    \"Edit real project files under the persistent workspace, then run the verification command again. \"\n"
             "                    f\"Workspace: {_workspace}.\"\n"

@@ -341,6 +341,15 @@ workspace and runs them before the next build/test/smoke command. It also
 tracks `cd` into newly-created workspace directories inside a multi-line Bash
 block, so named scaffold commands do not create accidental nested projects.
 
+Version 0.3.32 adds another small-model guard that is intentionally not tied to
+one language or sample app. When a small model writes or scaffolds files but
+does not run a successful build/test/smoke command, Odysseus Lite rejects the
+summary and asks for executable tool blocks again. It also checks for expected
+project manifests for common stacks, including `.csproj`/`.sln`,
+`package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, and Gradle build files.
+Recovered source snippets are written to disk only; redundant `create_document`
+blocks are dropped so project code does not end up in inert editor documents.
+
 It also recovers this common malformed tool block:
 
 ````text

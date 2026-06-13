@@ -121,6 +121,13 @@ build/test/smoke verification. It also tracks `cd` into workspace directories
 that are created earlier in the same Bash block, preventing accidental nested
 scaffolds such as `Project/Project`.
 
+Odysseus Lite 0.3.32 keeps that recovery tied to small models and makes the
+completion guard more general. If a small model writes or scaffolds files but no
+successful build/test/smoke command ran, the Agent gets another tool-only round.
+For common project stacks it also checks for the expected manifest, such as
+`.csproj`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, or Gradle build
+files, so loose source snippets are not mistaken for a complete project.
+
 ## Smoke Test A Running Instance
 
 The `tools/odysseus_smoke.py` script checks a running Odysseus Lite instance

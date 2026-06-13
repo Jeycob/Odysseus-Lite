@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.32
+
+- Tighten small-model Agent completion checks after recovered source writes.
+  If a small model writes or scaffolds real project files but does not run a
+  successful build/test/smoke command, Odysseus Lite keeps the loop going
+  instead of accepting a prose summary.
+- Detect missing project manifests generically for common stacks, including
+  `.csproj`/`.sln`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, and
+  Gradle build files. This prevents a model from treating loose source files as
+  a complete buildable project.
+- Drop redundant `create_document` blocks when the small-model recovery has
+  already converted filename/code-fence snippets into real `write_file` calls.
+  Project source stays on disk under the persistent workspace instead of being
+  mirrored into inert editor documents.
+
 ## 0.3.31
 
 - Recover another small-model Agent failure mode generically: when a model
