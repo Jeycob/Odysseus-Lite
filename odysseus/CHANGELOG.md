@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.38
+
+- Roll back the active small-model Agent compatibility layer. Odysseus Lite no
+  longer injects model-size-specific Agent hints, rewrites tool blocks, stops
+  Agent loops based on small-model verification heuristics, or exposes
+  `small_model_agent_workarounds` / `small_model_max_parameters_b` options.
+- Keep the non-small-model add-on functionality: Home Assistant Ingress,
+  persistent `/share` workspace/tool directories, auth handling, local Ollama
+  setup, .NET helper, and general Agent environment prompt remain available.
+
 ## 0.3.37
 
 - Add a small-model preflight guard for project/tool mismatch errors. When a

@@ -30,21 +30,29 @@ Runtime-installed user tools live under:
 /share/odysseus-tools
 ```
 
-Odysseus Lite injects those workspace/tooling rules into the Agent system
-prompt automatically. Project files should be created under
-`/share/odysseus-workspace`; durable runtime-installed tools should go under
-`/share/odysseus-tools`.
+For .NET projects, use Agent mode and ask Odysseus to run:
+
+```bash
+install-dotnet-sdk
+dotnet new web -o MiniTasks
+```
+
+The helper installs .NET into persistent `/share` storage.
+
+Odysseus Lite 0.3.6 also injects those workspace/tooling rules into the Agent
+system prompt automatically, including the instruction to use
+`install-dotnet-sdk --channel 9.0` instead of `apt-get install dotnet-sdk-*`.
 
 Odysseus Lite 0.3.7 also tells the agent that Bash tool calls are stateless.
 Use absolute paths or combine `cd` and the command in one call:
 
 ```bash
-cd /share/odysseus-workspace/project && npm test
+cd /share/odysseus-workspace/MiniTasks && dotnet run
+dotnet run --project /share/odysseus-workspace/MiniTasks/MiniTasks.csproj
 ```
 
 Odysseus Lite 0.3.8 additionally makes standalone `cd <dir>` Bash calls sticky
-for following Bash calls, so small local models are less likely to fail when
-they split navigation and execution into two tool calls.
+for following Bash calls in the same add-on process.
 
 Odysseus Lite 0.3.9 keeps that fix compatible with older cached upstream
 Odysseus source layouts used by Home Assistant Docker builds.
@@ -56,105 +64,9 @@ Odysseus Lite 0.3.11 makes the login page safer in Home Assistant mobile
 Ingress: stale or uncertain auth status falls back to Sign In instead of
 incorrectly showing first-time setup.
 
-Odysseus Lite 0.3.15 keeps general Agent environment rules separate from
-small-model compatibility rules. Extra recovery for malformed tool fences and
-false "created/built/changed" completions applies only when the selected model
-name looks like a small local model, with the threshold controlled by the
-`small_model_max_parameters_b` add-on option.
-
-Odysseus Lite 0.3.16 also stops small-model Agent loops after a successful
-build/test/lint/typecheck/smoke tool result, so the model does not continue
-into unnecessary diagnostics after the output already proves success.
-
-Odysseus Lite 0.3.17 tightens that behavior further: if a small model emits
-several tool blocks in one round, Odysseus stops executing the remaining blocks
-immediately after the first successful verification command. This is generic
-for project work and is not tied to .NET or any particular sample app.
-
-Odysseus Lite 0.3.18 hardens small-model tool parsing when a shell/python tool
-block contains markdown examples for generated docs. Nested triple-backtick
-examples are neutralized before parsing so the executable block is not cut
-short. It also fixes `use_web=false` form handling for API clients.
-
-Odysseus Lite 0.3.19 makes that parser heredoc-aware and recovers a second
-common small-model mistake: `write_file ... <<EOF` accidentally emitted inside
-a bash block is treated as normal shell redirection. The login page also
-recovers from stale first-run setup state by switching back to Sign In when the
-server says auth is already configured.
-
-Odysseus Lite 0.3.20 adds generic scaffold hygiene for small-model project
-creation loops. For common scaffold commands such as `dotnet new`,
-`npm create`, or `cargo new`, the agent wrapper keeps `cd` state from larger
-bash blocks and can prepare a clean target directory under
-`/share/odysseus-workspace`. It refuses to auto-clean paths outside the
-workspace or directories containing `.git`.
-
-Odysseus Lite 0.3.21 applies that normalization to the current native bash
-execution path used by upstream Odysseus and recovers a common .NET CLI
-shorthand mistake, `dotnet new <template> <name-or-csproj>`, by converting it
-to a valid named project scaffold command.
-
-Odysseus Lite 0.3.22 fixes another small-model scaffold pattern: if the model
-has already `cd`'d into the requested project directory, a named scaffold such
-as `dotnet new webapi -n <same-name>` is normalized to create files in the
-current directory instead of nesting a duplicate project. The cleanup guard now
-uses the effective directory from multi-line bash blocks, not only the initial
-shell directory.
-
-Odysseus Lite 0.3.23 makes that normalization order-aware, so valid
-root-scaffold commands such as `dotnet new webapi -n Project` are preserved
-when the following `cd Project` has not happened yet. It also cleans named
-workspace scaffold targets and normalizes Windows-style bash paths like
-`.\Project.csproj` to `./Project.csproj`.
-
-Odysseus Lite 0.3.24 keeps small local models from declaring victory after
-only building a fresh template. If the response described source files,
-routes, endpoints, or implementation details but no real write/edit tool ran,
-the Agent gets another round to edit project files under the workspace and
-verify again.
-
-Odysseus Lite 0.3.31 adds a stronger generic recovery for that same class of
-small-model mistakes. When an action request is answered with filename headings
-plus language code fences, Odysseus Lite converts those snippets into real
-`write_file` calls under `/share/odysseus-workspace` and inserts them before
-build/test/smoke verification. It also tracks `cd` into workspace directories
-that are created earlier in the same Bash block, preventing accidental nested
-scaffolds such as `Project/Project`.
-
-Odysseus Lite 0.3.32 keeps that recovery tied to small models and makes the
-completion guard more general. If a small model writes or scaffolds files but no
-successful build/test/smoke command ran, the Agent gets another tool-only round.
-For common project stacks it also checks for the expected manifest, such as
-`.csproj`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, or Gradle build
-files, so loose source snippets are not mistaken for a complete project.
-
-Odysseus Lite 0.3.33 also treats a failed verification command as structured
-small-model state. The next Agent round is told to fix the real root cause in
-source, manifest, dependency, or config files and rerun the failed command. Long
-tool outputs are compacted before they are sent back to small local models, so
-verbose installer/build logs do not drown out the actionable error tail.
-
-Odysseus Lite 0.3.34 catches another small-model failure mode: an action request
-answered with a prose checklist or command examples, but no executable tool
-block. In that case the Agent gets another tool-only round and is told to use
-real `bash`, `write_file`, or `edit_file` blocks. The guard is stack-generic and
-not tied to .NET, MiniTasks, or a specific prompt.
-
-Odysseus Lite 0.3.35 makes verification more deterministic for small models. If
-the request explicitly includes a build/test/lint/smoke command and the model
-edits or scaffolds files but skips that command, Odysseus Lite appends it to the
-same tool round. It also rejects source writes that are clearly pasted tool
-diffs or status text, preventing a model from corrupting files with its own
-previous output.
-
-Odysseus Lite 0.3.36 fixes the auto-verification helper from 0.3.35 so it runs
-without relying on Agent-loop local regex variables.
-
-Odysseus Lite 0.3.37 adds small-model preflight checks for project file hygiene.
-If the request is for a web/API/server artifact, a console-only scaffold is
-rejected before it runs. It also rejects project manifest XML written into
-source files, and source-like content written into manifest files, so the model
-must correct the real project files before build verification.
+Odysseus Lite 0.3.38 rolls back the active small-model Agent compatibility
+layer. The add-on no longer uses model-size-specific Agent hints or recovery
+rewrites, and the small-model configuration options have been removed.
 
 ## Smoke Test A Running Instance
 
