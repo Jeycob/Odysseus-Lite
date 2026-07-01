@@ -1,1 +1,1 @@
-<Translated content goes here>
+<translated content>
