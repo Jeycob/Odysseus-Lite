@@ -1,1 +1,3 @@
-<translated content>
+<translated content in English>
+
+<original content in Czech>
